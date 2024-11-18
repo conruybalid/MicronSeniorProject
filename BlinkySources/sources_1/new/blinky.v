@@ -20,12 +20,15 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 //Connor was here
+//Teehee
 
 module blinky(
     input clk_p,
     input clk_n,
     output led
     );
+    
+    
     
     wire clk;
      
@@ -34,5 +37,11 @@ module blinky(
         .I(clk_p),
         .IB(clk_n)
     );
+    
+    reg [24:0] count = 0;
+ 
+    assign led = count[24];
+     
+    always @ (posedge(clk)) count <= count + 1;
     
 endmodule
