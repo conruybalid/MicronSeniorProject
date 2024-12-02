@@ -21,7 +21,7 @@
 
 //Connor was here
 //Teehee
-
+//BlinkBlink
 module blinky(
     input clk_p,
     input clk_n,
