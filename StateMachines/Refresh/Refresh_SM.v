@@ -34,7 +34,7 @@ module Refresh_SM(
     reg [31:0] timer; // Assuming a 32-bit timer for simplicity
     
     parameter IDLE = 2'b00, REFRESH = 2'b01, REF_WAIT = 2'b10;
-    parameter tRFC = 32'd103; // Example refresh cycle time
+    parameter tRFC = 32'd10; // Example refresh cycle time (103)
      
     // Initialize state
     initial begin
@@ -43,8 +43,14 @@ module Refresh_SM(
         timer = 0;
     end
      
+     
+    // State Transition logic
     always @(posedge clk) begin
 	   state <= next_state;
+	   if (state == REF_WAIT)
+	       timer = timer + 1;
+	   else
+	       timer = 0;
 
     end
 
@@ -67,11 +73,13 @@ module Refresh_SM(
             end
             
             REF_WAIT: begin
-                if (timer != tRFC) begin
+                if (timer < (tRFC - 1)) begin
                     next_state = REF_WAIT;
-                    timer = timer + 1;
-                end else
+                end else if (Refresh_Signal)
+                    next_state = REFRESH;
+                else
                     next_state = IDLE;
+                                     
             end
                     
         endcase
@@ -85,7 +93,7 @@ module Refresh_SM(
         case (state)
             
             IDLE: begin
-                CS = 1'b1;
+                CS = 1'b0;
                 RAS =1'b1;
                 CAS = 1'b1;
                 WE = 1'b1;		      
@@ -95,7 +103,7 @@ module Refresh_SM(
                 CS = 1'b0;
                 RAS = 1'b0;
                 CAS = 1'b0;
-                WE = 1'b0;
+                WE = 1'b1;
             end
             
             REF_WAIT: begin

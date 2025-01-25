@@ -34,8 +34,8 @@ module tb_Refresh_SM;
     wire WE;
     
     // Internal signals to monitor states
-    wire [1:0] state;
-    wire [1:0] next_state;
+//    wire [1:0] state;
+//    wire [1:0] next_state;
     
      // Instantiate the Unit Under Test (UUT)
     Refresh_SM uut (
@@ -50,7 +50,7 @@ module tb_Refresh_SM;
     
     initial begin
         // Initialize Inputs
-        clk = 0;
+        clk = 1;
         Refresh_Signal = 0;
 
         // Wait for global reset
@@ -60,7 +60,21 @@ module tb_Refresh_SM;
         Refresh_Signal = 1; // Trigger refresh
         #50;
         Refresh_Signal = 0; // End refresh signal
-        #200;
+        #20;
+        Refresh_Signal = 1; //Should have no affect
+        #10
+        Refresh_Signal = 0;
+        #30;
+        Refresh_Signal = 1; //Straight from Wait to Refresh (skip Idle)
+        #10
+        Refresh_Signal = 0;
+        #100
+        #30 //Sit in idle for a minute
+        Refresh_Signal = 1; // Go from Idle to Refresh
+        #150 // Go all the way through and start a back to back refresh
+        Refresh_Signal = 0;
+        #60 // Should go back to Idle
+        
         
         // Add more test vectors as needed
         $finish;
@@ -68,10 +82,10 @@ module tb_Refresh_SM;
     
     always #5 clk = ~clk; //Generate clock with period of 10 time units
 
-    // Monitor internal states
-    initial begin
-        $monitor("Time: %0t | State: %b | Next State: %b | CS: %b | RAS: %b | CAS: %b | WE: %b", 
-                 $time, uut.state, uut.next_state, CS, RAS, CAS, WE);
-    end
+//    // Monitor internal states
+//    initial begin
+//        $monitor("Time: %0t | State: %b | Next State: %b | CS: %b | RAS: %b | CAS: %b | WE: %b", 
+//                 $time, uut.state, uut.next_state, CS, RAS, CAS, WE);
+//    end
 
 endmodule
