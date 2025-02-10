@@ -37,73 +37,88 @@ module Big_SM_Template(
     input WRITE_AP,
     input READ_AP,
     input PRE,
-    output CS,
-    output RAS,
-    output CAS,
-    output WE
+    output reg CS,
+    output reg RAS,
+    output reg CAS,
+    output reg WE
 //    output [2:0] BA,
 //    output [15:0] A,
 //    output BC,
 //    output AP
     );
     
-    reg [4:0] state;
-    reg [4:0] next_state;
-     
-parameter Power_On = 0,
-          Reset_Procedure = 1,
-          Initialization = 2,
-          ZQ_Calibration = 3,
-          Idle = 4,
-          Write_Leveling = 5,
-          Self_Refresh = 6,
-          Refreshing = 7,
-          Precharge_Power_Down = 8,
-          Activating = 9,
-          Bank_Active = 10,
-          Active_Power_Down = 11,
-          Writing = 12,
-          WritingAP = 13,
-          Reading = 14,
-          ReadingAP = 15,
-          Precharging = 16;
+    reg [5:0] state;
+    reg [5:0] next_state;
+    
+    reg [31:0] ref_timer; // Assuming a 32-bit timer for simplicity
+    
+    parameter IDLE = 2'b00, REFRESH = 2'b01, REF_WAIT = 2'b10;
+    parameter tRFC = 32'd10; // Example refresh cycle time (103)
+    
+parameter Power_On = 5'd0,
+          Reset_Procedure = 5'd1,
+          Initialization = 5'd2,
+          ZQ_Calibration = 5'd3,
+          Idle = 5'd4,
+          Write_Leveling = 5'd5,
+          Self_Refresh = 5'd6,
+          Refreshing = 5'd7,
+          Precharge_Power_Down = 5'd8,
+          Activating = 5'd9,
+          Bank_Active = 5'd10,
+          Active_Power_Down = 5'd11,
+          Writing = 5'd12,
+          WritingAP = 5'd13,
+          Reading = 5'd14,
+          ReadingAP = 5'd15,
+          Precharging = 5'd16,
+          Refresh_Wait = 5'd17;
 
-reg [8*20:1] state_name; // 20-character string
-
-always @(*) begin
-    case (state)
-        Power_On: state_name = "Power_On";
-        Reset_Procedure: state_name = "Reset_Procedure";
-        Initialization: state_name = "Initialization";
-        ZQ_Calibration: state_name = "ZQ_Calibration";
-        Idle: state_name = "Idle";
-        Write_Leveling: state_name = "Write_Leveling";
-        Self_Refresh: state_name = "Self_Refresh";
-        Refreshing: state_name = "Refreshing";
-        Precharge_Power_Down: state_name = "Precharge_Power_Down";
-        Activating: state_name = "Activating";
-        Bank_Active: state_name = "Bank_Active";
-        Active_Power_Down: state_name = "Active_Power_Down";
-        Writing: state_name = "Writing";
-        WritingAP: state_name = "WritingAP";
-        Reading: state_name = "Reading";
-        ReadingAP: state_name = "ReadingAP";
-        Precharging: state_name = "Precharging";
-        default: state_name = "Unknown";
-    endcase
-end
+    reg [8*20:1] state_name; // 20-character string
+    
+    always @(*) begin
+        case (state)
+            Power_On: state_name = "Power_On";
+            Reset_Procedure: state_name = "Reset_Procedure";
+            Initialization: state_name = "Initialization";
+            ZQ_Calibration: state_name = "ZQ_Calibration";
+            Idle: state_name = "Idle";
+            Write_Leveling: state_name = "Write_Leveling";
+            Self_Refresh: state_name = "Self_Refresh";
+            Refreshing: state_name = "Refreshing";
+            Precharge_Power_Down: state_name = "Precharge_Power_Down";
+            Activating: state_name = "Activating";
+            Bank_Active: state_name = "Bank_Active";
+            Active_Power_Down: state_name = "Active_Power_Down";
+            Writing: state_name = "Writing";
+            WritingAP: state_name = "WritingAP";
+            Reading: state_name = "Reading";
+            ReadingAP: state_name = "ReadingAP";
+            Precharging: state_name = "Precharging";
+            Refresh_Wait: state_name = "Refresh_Wait";
+            default: state_name = "Unknown";
+        endcase
+    end
      
     // Initialize state
     initial begin
         state = Power_On;
         next_state = Reset_Procedure;
+        CS = 1'b0;
+        RAS =1'b1;
+        CAS = 1'b1;
+        WE = 1'b1;
     end
      
      
     // State Transition logic
     always @(posedge CLK) begin
         
-        //Transition changes
+       //Transition changes
+       if (state == Refresh_Wait)
+	       ref_timer = ref_timer + 1;
+       else
+	       ref_timer = 0;
         
 	   state <= next_state;
 
@@ -159,8 +174,19 @@ end
             end
             
             Refreshing: begin
-                next_state = Idle;
+                next_state = Refresh_Wait;
             end
+            
+            Refresh_Wait: begin
+                if (ref_timer < (tRFC - 1)) begin
+                    next_state = Refresh_Wait;
+                end else if (REF)
+                    next_state = Refreshing;
+                else
+                    next_state = Idle;
+                                     
+            end
+            
             
             Precharge_Power_Down: begin
                 // Hmm, this one needs to work without the clock running
@@ -256,10 +282,10 @@ end
             end
             
             Idle: begin
-//                CS = 1'b0;
-//                RAS =1'b1;
-//                CAS = 1'b1;
-//                WE = 1'b1;		      
+                CS = 1'b0;
+                RAS =1'b1;
+                CAS = 1'b1;
+                WE = 1'b1;		      
             end
             
             Write_Leveling: begin
@@ -269,6 +295,17 @@ end
             end
             
             Refreshing: begin
+                CS = 1'b0;
+                RAS = 1'b0;
+                CAS = 1'b0;
+                WE = 1'b1;
+            end
+            
+            Refresh_Wait: begin
+                CS = 1'b0;
+                RAS = 1'b1;
+                CAS = 1'b1;
+                WE = 1'b1;
             end
             
             Precharge_Power_Down: begin
