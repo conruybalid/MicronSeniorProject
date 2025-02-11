@@ -107,16 +107,13 @@ module BigSM_TB();
     REF = 1;
     #20 
     REF = 0;
-    #30
+    #150
     ACT = 1;
     #20 
     ACT = 0;
     WRITE = 1;
-    #50
+    #20
     WRITE = 0;
-    READ = 1;
-    #30
-    READ = 0;
     PRE = 1;
     
     

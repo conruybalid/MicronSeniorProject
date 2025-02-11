@@ -37,10 +37,24 @@ module Big_SM_Template(
     input WRITE_AP,
     input READ_AP,
     input PRE,
+    input [14:0] Addr_Row,      // Used during Activate, open until next precharge
+    input [9:0] Addr_Column,    // Used during Write
+    input Addr_Column_11,       // A[11] Used during Write
+    input A_10,                 // Write - Precharge Y = 1 / N = 0  |  Precharge - One bank = 0 / All banks = 1
+    input A_12,                 // 1 = BL8 / 0 = BC4
+    input [3:0] BA_in,          // Activate | Write | Precharge (sometimes)
+    input [15:0] DQ_in,
     output reg CS,
     output reg RAS,
     output reg CAS,
-    output reg WE
+    output reg WE,
+    output reg [14:0] Addr_out, // Row or Column address depending on state
+    output reg [2:0] BA_out,    // Bank address
+    output reg LDM,             // Lower 8 bit data mask - Write = 0 / Ignore (mask) data = 1
+    output reg UDM,              // Upper 8 bit data mask - Write = 0 / Ignore (mask) data = 1
+    output reg [15:0] DQ_out,   // 16 bit data line
+    output reg LDQS,            // Lower 8 bit data strobe
+    output reg UDQS          // Upper 8 bit data strobe
 //    output [2:0] BA,
 //    output [15:0] A,
 //    output BC,
@@ -312,6 +326,14 @@ parameter Power_On = 5'd0,
             end
             
             Activating: begin
+                CS <= 1'b0;
+                RAS <= 1'b0;                      // Low = choose Row
+                CAS <= 1'b1;
+                WE <= 1'b1;
+                Addr_out <= Addr_Row;               // 15 bit hex value, start at 15'h1
+                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
+                LDM <= 1'b1;                        // Ignore lower 8 bits
+                UDM <= 1'b1;                        // Ignore lower 8 bits
             end
             
             Bank_Active: begin
@@ -321,6 +343,20 @@ parameter Power_On = 5'd0,
             end
             
             Writing: begin
+                CS <= 1'b0;
+                RAS <= 1'b1;
+                CAS <= 1'b0;                      // Low = Choose Column
+                WE <= 1'b0;
+                Addr_out [9:0] = Addr_Column;
+                Addr_out [10] = A_10;               // 0 = no precharge
+                Addr_out [11] = Addr_Column_11;
+                Addr_out [12] = A_12;
+                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
+                LDM <= 1'b0;                        // Write lower 8 bits
+                UDM <= 1'b0;                        // Write lower 8 bits
+                DQ_out <= DQ_in;                    // 16 bit data line
+                UDQS <= CLK;
+                LDQS <= CLK;
             end
             
             WritingAP: begin
@@ -333,6 +369,16 @@ parameter Power_On = 5'd0,
             end
             
             Precharging: begin
+                CS <= 1'b0;
+                RAS <= 1'b0;
+                CAS <= 1'b1;
+                WE <= 1'b0;
+                Addr_out [10] = A_10;               // 1 =  one bank / 0 = all banks
+                Addr_out [11] = Addr_Column_11;     // Does not matter
+                Addr_out [12] = A_12;               // Does not matter
+                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0 / Does not matter IF A_10 == 0
+                LDM <= 1'b1;                        // Ignore lower 8 bits
+                UDM <= 1'b1; 
             end
 
                 
