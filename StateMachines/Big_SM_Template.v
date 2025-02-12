@@ -337,6 +337,7 @@ parameter Power_On = 5'd0,
             end
             
             Bank_Active: begin
+                Addr_out <= 15'bx;
             end
             
             Active_Power_Down: begin
@@ -351,6 +352,7 @@ parameter Power_On = 5'd0,
                 Addr_out [10] = A_10;               // 0 = no precharge
                 Addr_out [11] = Addr_Column_11;
                 Addr_out [12] = A_12;
+                Addr_out [14:13] = 2'b00;
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Write lower 8 bits
                 UDM <= 1'b0;                        // Write lower 8 bits
@@ -379,6 +381,10 @@ parameter Power_On = 5'd0,
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0 / Does not matter IF A_10 == 0
                 LDM <= 1'b1;                        // Ignore lower 8 bits
                 UDM <= 1'b1; 
+                
+                //For showcasing
+                Addr_out [9:0] = 10'bx;
+                DQ_out = 16'bx;
             end
 
                 

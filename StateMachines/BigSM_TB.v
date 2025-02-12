@@ -44,6 +44,7 @@ module BigSM_TB();
   wire RAS;
   wire CAS;
   wire WE;
+  wire [14:0] Addr_out;
 
   // Instantiate the Unit Under Test (UUT)
   Big_SM_Template uut (
@@ -66,7 +67,15 @@ module BigSM_TB();
     .CS(CS), 
     .RAS(RAS), 
     .CAS(CAS), 
-    .WE(WE)
+    .WE(WE),
+    .Addr_Row(15'd5),
+    .Addr_Column(10'd7),
+    .Addr_out(Addr_out),
+    .A_10(1'b0),
+    .A_12(1'b0),
+    .Addr_Column_11(1'b0),
+    .DQ_in(16'd2025)
+    
   );
 
   initial begin
@@ -112,7 +121,7 @@ module BigSM_TB();
     #20 
     ACT = 0;
     WRITE = 1;
-    #20
+    #10
     WRITE = 0;
     PRE = 1;
     
