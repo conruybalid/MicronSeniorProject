@@ -243,7 +243,7 @@ parameter Power_On = 5'd0,
             end
             
             Reading: begin
-                      if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
+                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
                     next_state = Writing;
                 else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
                     next_state = WritingAP;
@@ -362,10 +362,10 @@ parameter Power_On = 5'd0,
             end
             
             Reading: begin
-                CS_n <= 1'b0;
-                RAS_n <= 1'b1;
-                CAS_n <= 1'b0;                      // Low = Choose Column
-                WE_n <= 1'b1;
+                CS <= 1'b0;
+                RAS <= 1'b1;
+                CAS <= 1'b0;                      // Low = Choose Column
+                WE <= 1'b1;
                 Addr_out [9:0] = Addr_Column;
                 Addr_out [10] = A_10;               // 0 = no precharge
                 Addr_out [11] = Addr_Column_11;
@@ -374,15 +374,15 @@ parameter Power_On = 5'd0,
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
                 DQ_out <= DQ_in;                    // This needs to be changed
-                UDQS <= clk;
-                LDQS <= clk;
+                UDQS <= CLK;
+                LDQS <= CLK;
             end
             
-            Reading_AP: begin
-                CS_n <= 1'b0;
-                RAS_n <= 1'b1;
-                CAS_n <= 1'b0;
-                WE_n <= 1'b1;
+            ReadingAP: begin
+                CS <= 1'b0;
+                RAS <= 1'b1;
+                CAS <= 1'b0;
+                WE <= 1'b1;
                 Addr_out [9:0] = Addr_Column;
                 Addr_out [10] = A_10;               // 1 =  precharge
                 Addr_out [11] = Addr_Column_11;     // Part of row addres
