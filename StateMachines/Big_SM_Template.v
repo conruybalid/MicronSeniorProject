@@ -337,6 +337,10 @@ parameter Power_On = 5'd0,
             end
             
             Bank_Active: begin
+                CS = 1'b0;
+                RAS =1'b1;
+                CAS = 1'b1;
+                WE = 1'b1;		     
                 Addr_out <= 15'bx;
             end
             
