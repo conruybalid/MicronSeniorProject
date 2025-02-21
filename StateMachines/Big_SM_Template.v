@@ -25,11 +25,7 @@ module Big_SM_Template(
     input RESET,
     input ZQCL,
     input MRS,
-    input SRE,
-    input SRX,
     input REF,
-    input PDE,
-    input PDX,
     input CKE,
     input ACT,
     input WRITE,
@@ -65,6 +61,8 @@ module Big_SM_Template(
     reg [5:0] next_state;
     
     reg [31:0] ref_timer; // Assuming a 32-bit timer for simplicity
+    reg [31:0] precharge_timer;
+    reg [15:0] last_row_accessed;
     
     parameter IDLE = 2'b00, REFRESH = 2'b01, REF_WAIT = 2'b10;
     parameter tRFC = 32'd10; // Example refresh cycle time (103)
@@ -97,13 +95,9 @@ parameter Power_On = 5'd0,
             Initialization: state_name = "Initialization";
             ZQ_Calibration: state_name = "ZQ_Calibration";
             Idle: state_name = "Idle";
-            Write_Leveling: state_name = "Write_Leveling";
-            Self_Refresh: state_name = "Self_Refresh";
             Refreshing: state_name = "Refreshing";
-            Precharge_Power_Down: state_name = "Precharge_Power_Down";
             Activating: state_name = "Activating";
             Bank_Active: state_name = "Bank_Active";
-            Active_Power_Down: state_name = "Active_Power_Down";
             Writing: state_name = "Writing";
             WritingAP: state_name = "WritingAP";
             Reading: state_name = "Reading";
@@ -127,6 +121,10 @@ parameter Power_On = 5'd0,
      
     // State Transition logic
     always @(posedge CLK) begin
+        
+        //Timer
+        if (precharge_timer != 32'hFFFFFFFF) 
+            precharge_timer = precharge_timer + 1;
         
        //Transition changes
        if (state == Refresh_Wait)
@@ -164,15 +162,11 @@ parameter Power_On = 5'd0,
             end
             
             Idle: begin
-                if (MRS && !(SRE || REF || PDE || ACT))
+                if (MRS && !(REF || ACT))
                     next_state = Write_Leveling;
-                else if (SRE && !(MRS || REF || PDE || ACT))
-                    next_state = Self_Refresh;
-                else if (REF && !(MRS || SRE || PDE || ACT))
+                else if (REF && !(MRS || ACT))
                     next_state = Refreshing;
-                else if (PDE && !(MRS || SRE || REF || ACT))
-                    next_state = Precharge_Power_Down;
-                else if (ACT && !(MRS || SRE || REF || PDE))
+                else if (ACT && !(MRS || REF))
                     next_state = Activating;
                 else
                     next_state = Idle;
@@ -211,17 +205,15 @@ parameter Power_On = 5'd0,
             end
             
             Bank_Active: begin
-                if (PDX && !(WRITE || WRITE_AP || READ || READ_AP || PRE))
-                    next_state = Active_Power_Down;
-                else if (WRITE && !(PDX || WRITE_AP || READ || READ_AP || PRE))
+                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
                     next_state = Writing;
-                else if (WRITE_AP && !(PDX || WRITE || READ || READ_AP || PRE))
+                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
                     next_state = WritingAP;
-                else if (READ && !(PDX || WRITE || WRITE_AP || READ_AP || PRE))
+                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
                     next_state = Reading;
-                else if (READ_AP && !(PDX || WRITE || WRITE_AP || READ || PRE))
+                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
                     next_state = ReadingAP;
-                else if (PRE && !(PDX || WRITE || WRITE_AP || READ || READ_AP))
+                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
                     next_state = Precharging;
                 else
                     next_state = Bank_Active;
@@ -299,7 +291,8 @@ parameter Power_On = 5'd0,
                 CS = 1'b0;
                 RAS =1'b1;
                 CAS = 1'b1;
-                WE = 1'b1;		      
+                WE = 1'b1;
+                BA_out = 3'bx;		      
             end
             
             Write_Leveling: begin
@@ -389,6 +382,8 @@ parameter Power_On = 5'd0,
                 //For showcasing
                 Addr_out [9:0] = 10'bx;
                 DQ_out = 16'bx;
+                
+                precharge_timer = 0;
             end
 
                 

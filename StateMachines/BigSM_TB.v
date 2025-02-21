@@ -45,11 +45,8 @@ module BigSM_TB();
     .ZQCL(ZQCL), 
     .MRS(MRS), 
     // States
-    .SRE(SRE), 
-    .SRX(SRX), 
+    
     .REF(REF), 
-    .PDE(PDE), 
-    .PDX(PDX), 
     .CKE(CKE), 
     .ACT(ACT), 
     .WRITE(WRITE), 
