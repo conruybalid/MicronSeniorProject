@@ -362,10 +362,37 @@ parameter Power_On = 5'd0,
             end
             
             Reading: begin
+                CS_n <= 1'b0;
+                RAS_n <= 1'b1;
+                CAS_n <= 1'b0;                      // Low = Choose Column
+                WE_n <= 1'b1;
+                Addr_out [9:0] = Addr_Column;
+                Addr_out [10] = A_10;               // 0 = no precharge
+                Addr_out [11] = Addr_Column_11;
+                Addr_out [12] = A_12;
+                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
+                LDM <= 1'b0;                        // Read lower 8 bits
+                UDM <= 1'b0;                        // Read lower 8 bits
+                DQ_out <= DQ_in;                    // This needs to be changed
+                UDQS <= clk;
+                LDQS <= clk;
             end
             
-            ReadingAP: begin
-            end
+            Reading_AP: begin
+                CS_n <= 1'b0;
+                RAS_n <= 1'b1;
+                CAS_n <= 1'b0;
+                WE_n <= 1'b1;
+                Addr_out [9:0] = Addr_Column;
+                Addr_out [10] = A_10;               // 1 =  precharge
+                Addr_out [11] = Addr_Column_11;     // Part of row addres
+                Addr_out [12] = A_12;               // 1 = BL8 / 0 = BC4
+                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
+                LDM <= 1'b0;                        // Read lower 8 bits
+                UDM <= 1'b0;                        // Read lower 8 bits
+                DQ_out <= DQ_in;                    // needs to be changed 
+                
+            end            
             
             Precharging: begin
                 CS <= 1'b0;
