@@ -39,7 +39,7 @@ module Big_SM_Template(
     input A_10,                 // Write - Precharge Y = 1 / N = 0  |  Precharge - One bank = 0 / All banks = 1
     input A_12,                 // 1 = BL8 / 0 = BC4
     input [3:0] BA_in,          // Activate | Write | Precharge (sometimes)
-    input [15:0] DQ_in,
+    inout wire [15:0] DQ,	//DQ line output and input for memory controller
     output reg CS,
     output reg RAS,
     output reg CAS,
@@ -48,7 +48,7 @@ module Big_SM_Template(
     output reg [2:0] BA_out,    // Bank address
     output reg LDM,             // Lower 8 bit data mask - Write = 0 / Ignore (mask) data = 1
     output reg UDM,              // Upper 8 bit data mask - Write = 0 / Ignore (mask) data = 1
-    output reg [15:0] DQ_out,   // 16 bit data line
+    output reg [15:0] MCRegis,   // 16 bit internal memory controller register name can change
     output reg LDQS,            // Lower 8 bit data strobe
     output reg UDQS          // Upper 8 bit data strobe
 //    output [2:0] BA,
@@ -362,10 +362,10 @@ parameter Power_On = 5'd0,
             end
             
             Reading: begin
-                CS <= 1'b0;
-                RAS <= 1'b1;
-                CAS <= 1'b0;                      // Low = Choose Column
-                WE <= 1'b1;
+                CS_n <= 1'b0;
+                RAS_n <= 1'b1;
+                CAS_n <= 1'b0;                      // Low = Choose Column
+                WE_n <= 1'b1;
                 Addr_out [9:0] = Addr_Column;
                 Addr_out [10] = A_10;               // 0 = no precharge
                 Addr_out [11] = Addr_Column_11;
@@ -373,16 +373,16 @@ parameter Power_On = 5'd0,
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
-                DQ_out <= DQ_in;                    // This needs to be changed
-                UDQS <= CLK;
-                LDQS <= CLK;
+                MCRegis <= DQ;                    // This needs to be changed
+                UDQS <= clk;
+                LDQS <= clk;
             end
             
-            ReadingAP: begin
-                CS <= 1'b0;
-                RAS <= 1'b1;
-                CAS <= 1'b0;
-                WE <= 1'b1;
+           Reading_AP: begin
+                CS_n <= 1'b0;
+                RAS_n <= 1'b1;
+                CAS_n <= 1'b0;
+                WE_n <= 1'b1;
                 Addr_out [9:0] = Addr_Column;
                 Addr_out [10] = A_10;               // 1 =  precharge
                 Addr_out [11] = Addr_Column_11;     // Part of row addres
@@ -390,9 +390,9 @@ parameter Power_On = 5'd0,
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
-                DQ_out <= DQ_in;                    // needs to be changed 
+                MCRegis <= DQ;                    // needs to be changed 
                 
-            end            
+            end
             
             Precharging: begin
                 CS <= 1'b0;
