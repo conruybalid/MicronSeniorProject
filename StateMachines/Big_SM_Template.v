@@ -353,7 +353,7 @@ parameter Power_On = 5'd0,
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Write lower 8 bits
                 UDM <= 1'b0;                        // Write lower 8 bits
-                DQ_out <= DQ_in;                    // 16 bit data line
+                DQ <= MCRegis;                    // 16 bit data line
                 UDQS <= CLK;
                 LDQS <= CLK;
             end
@@ -362,10 +362,10 @@ parameter Power_On = 5'd0,
             end
             
             Reading: begin
-                CS_n <= 1'b0;
-                RAS_n <= 1'b1;
-                CAS_n <= 1'b0;                      // Low = Choose Column
-                WE_n <= 1'b1;
+                CS <= 1'b0;
+                RAS <= 1'b1;
+                CAS <= 1'b0;                      // Low = Choose Column
+                WE <= 1'b1;
                 Addr_out [9:0] = Addr_Column;
                 Addr_out [10] = A_10;               // 0 = no precharge
                 Addr_out [11] = Addr_Column_11;
@@ -408,7 +408,7 @@ parameter Power_On = 5'd0,
                 
                 //For showcasing
                 Addr_out [9:0] = 10'bx;
-                DQ_out = 16'bx;
+                MCRegis = 16'bx;
                 
                 precharge_timer = 0;
             end
