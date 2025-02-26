@@ -49,6 +49,7 @@ module Big_SM_Template(
     output reg LDM,             // Lower 8 bit data mask - Write = 0 / Ignore (mask) data = 1
     output reg UDM,              // Upper 8 bit data mask - Write = 0 / Ignore (mask) data = 1
     output reg [15:0] MCRegis,   // 16 bit internal memory controller register name can change
+    input [15:0] DQ_input,
     output reg LDQS,            // Lower 8 bit data strobe
     output reg UDQS          // Upper 8 bit data strobe
 //    output [2:0] BA,
@@ -63,6 +64,8 @@ module Big_SM_Template(
     reg [31:0] ref_timer; // Assuming a 32-bit timer for simplicity
     reg [31:0] precharge_timer;
     reg [15:0] last_row_accessed;
+    
+    reg DQ_dir;
     
     parameter IDLE = 2'b00, REFRESH = 2'b01, REF_WAIT = 2'b10;
     parameter tRFC = 32'd10; // Example refresh cycle time (103)
@@ -116,6 +119,7 @@ parameter Power_On = 5'd0,
         RAS =1'b1;
         CAS = 1'b1;
         WE = 1'b1;
+        DQ_dir = 1'b0;
     end
      
      
@@ -131,6 +135,9 @@ parameter Power_On = 5'd0,
 	       ref_timer = ref_timer + 1;
        else
 	       ref_timer = 0;
+        
+       if (next_state != Writing)
+            DQ_dir = 1'b0;
         
 	   state <= next_state;
 
@@ -353,7 +360,8 @@ parameter Power_On = 5'd0,
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Write lower 8 bits
                 UDM <= 1'b0;                        // Write lower 8 bits
-                DQ <= MCRegis;                    // 16 bit data line
+                //DQ <= MCRegis;                    // 16 bit data line
+                DQ_dir = 1'b1; //make the DQ an input
                 UDQS <= CLK;
                 LDQS <= CLK;
             end
@@ -374,15 +382,15 @@ parameter Power_On = 5'd0,
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
                 MCRegis <= DQ;                    // This needs to be changed
-                UDQS <= clk;
-                LDQS <= clk;
+                UDQS <= CLK;
+                LDQS <= CLK;
             end
             
-           Reading_AP: begin
-                CS_n <= 1'b0;
-                RAS_n <= 1'b1;
-                CAS_n <= 1'b0;
-                WE_n <= 1'b1;
+           ReadingAP: begin
+                CS <= 1'b0;
+                RAS <= 1'b1;
+                CAS <= 1'b0;
+                WE <= 1'b1;
                 Addr_out [9:0] = Addr_Column;
                 Addr_out [10] = A_10;               // 1 =  precharge
                 Addr_out [11] = Addr_Column_11;     // Part of row addres
@@ -418,7 +426,8 @@ parameter Power_On = 5'd0,
             
     end
     
-
+    // Tri-state buffer to control my_bus
+    assign DQ = (DQ_dir) ? DQ_input : 16'bz;
     
     
 endmodule

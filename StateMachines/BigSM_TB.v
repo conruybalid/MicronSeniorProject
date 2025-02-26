@@ -37,6 +37,9 @@ module BigSM_TB();
   wire LDM, UDM;
   wire [15:0] DQ_out;
   wire UDQS, LDQS;
+  
+  wire [15:0] DQ_line;
+  
 
   // Instantiate the Unit Under Test (UUT)
   Big_SM_Template uut (
@@ -70,12 +73,13 @@ module BigSM_TB();
     .Addr_out(Addr_out),
     .A_10(A_10),
     .A_12(A_12),
-    .DQ_in(DQ_in),
+    .MCRegis(DQ_out),
+    .DQ_input(16'b1111000000000000),
+    .DQ(DQ_line),
     
     // Extra outputs
     .LDM(LDM),
     .UDM(UDM),
-    .DQ_out(DQ_out),
     .UDQS(UDQS),
     .LDQS(LDQS)
   );
@@ -152,5 +156,7 @@ module BigSM_TB();
     #100;
     $finish;
   end
+  
+  assign DQ_line = (CS == 1'b0 && RAS == 1'b1 && CAS == 1'b0 && WE == 1'b1) ? 16'h0F00 : 16'bz;
 
 endmodule
