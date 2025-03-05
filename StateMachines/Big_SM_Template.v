@@ -38,7 +38,8 @@ module Big_SM_Template(
     input Addr_Column_11,       // A[11] Used during Write
     input A_10,                 // Write - Precharge Y = 1 / N = 0  |  Precharge - One bank = 0 / All banks = 1
     input A_12,                 // 1 = BL8 / 0 = BC4
-    input [3:0] BA_in,          // Activate | Write | Precharge (sometimes)
+    input [1:0] A13_14,
+    input [2:0] BA_in,          // Activate | Write | Precharge (sometimes)
     inout wire [15:0] DQ,	//DQ line output and input for memory controller
     output reg CS,
     output reg RAS,
@@ -48,8 +49,8 @@ module Big_SM_Template(
     output reg [2:0] BA_out,    // Bank address
     output reg LDM,             // Lower 8 bit data mask - Write = 0 / Ignore (mask) data = 1
     output reg UDM,              // Upper 8 bit data mask - Write = 0 / Ignore (mask) data = 1
-    output reg [15:0] MCRegis,   // 16 bit internal memory controller register name can change
-    input [15:0] DQ_input,
+    output reg [15:0] DQ_read,   // 16 bit internal memory controller register name can change
+    input [15:0] Data_input,
     output reg LDQS,            // Lower 8 bit data strobe
     output reg UDQS          // Upper 8 bit data strobe
 //    output [2:0] BA,
@@ -57,6 +58,22 @@ module Big_SM_Template(
 //    output BC,
 //    output AP
     );
+    
+    // Hardcoded Inputs    
+//    wire [2:0] BA_in;
+//    assign BA_in = (BA_input === 3'bz) ? 3'b101 : BA_input;
+//    wire [2:0] A13_14;
+//    assign A13_14 = (A13_14_input === 2'bz) ? 2'b00 : A13_14_input;
+//    wire [14:0] Addr_Row;
+//    assign Addr_Row = (Addr_Row_input === 15'bz) ? 15'd1 : Addr_Row_input;
+//    wire [9:0]  Addr_Column;
+//    assign  Addr_Column = ( Addr_Column_input === 10'bz) ? 10'd1 :  Addr_Column_input;
+//    wire Addr_Column_11;
+//    assign  Addr_Column_11 = ( Addr_Column_11_input === 1'bz) ? 1'b1 :  Addr_Column_11_input;
+//    wire A_10;
+//    assign  A_10 = ( A_10_input === 1'bz) ? 1'b0 :  A_10_input;                                // Write - Precharge Y = 1 / N = 0  |  Precharge - One bank = 0 / All banks = 1
+//    wire A_12;
+//    assign  A_12 = ( A_12_input === 1'bz) ? 1'b1 :  A_12_input;                                // 1 = BL8 / 0 = BC4
     
     reg [5:0] state;
     reg [5:0] next_state;
@@ -173,10 +190,11 @@ parameter Power_On = 5'd0,
                     next_state = Write_Leveling;
                 else if (REF && !(MRS || ACT))
                     next_state = Refreshing;
-                else if (ACT && !(MRS || REF))
+                else if ((ACT || READ || WRITE) && !(MRS || REF))
                     next_state = Activating;
                 else
                     next_state = Idle;
+
                     
             end
             
@@ -212,18 +230,22 @@ parameter Power_On = 5'd0,
             end
             
             Bank_Active: begin
-                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
+//                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
+//                    next_state = Writing;
+//                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
+//                    next_state = WritingAP;
+//                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
+//                    next_state = Reading;
+//                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
+//                    next_state = ReadingAP;
+//                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
+//                    next_state = Precharging;
+//                else
+//                    next_state = Bank_Active;
+                  if (WRITE)
                     next_state = Writing;
-                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
-                    next_state = WritingAP;
-                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
+                  else if (READ)
                     next_state = Reading;
-                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
-                    next_state = ReadingAP;
-                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
-                    next_state = Precharging;
-                else
-                    next_state = Bank_Active;
             end
             
             Active_Power_Down: begin
@@ -231,18 +253,18 @@ parameter Power_On = 5'd0,
             end
             
             Writing: begin
-                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
-                    next_state = Writing;
-                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
-                    next_state = WritingAP;
-                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
-                    next_state = Reading;
-                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
-                    next_state = ReadingAP;
-                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
-                    next_state = Precharging;
-                else
-                    next_state = Bank_Active;
+//                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
+//                    next_state = Writing;
+//                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
+//                    next_state = WritingAP;
+//                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
+//                    next_state = Reading;
+//                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
+//                    next_state = ReadingAP;
+//                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
+//                    next_state = Precharging;
+//                else
+                next_state = Precharging;
             end
             
             WritingAP: begin
@@ -250,18 +272,18 @@ parameter Power_On = 5'd0,
             end
             
             Reading: begin
-                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
-                    next_state = Writing;
-                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
-                    next_state = WritingAP;
-                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
-                    next_state = Reading;
-                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
-                    next_state = ReadingAP;
-                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
-                    next_state = Precharging;
-                else
-                    next_state = Bank_Active;
+//                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
+//                    next_state = Writing;
+//                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
+//                    next_state = WritingAP;
+//                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
+//                    next_state = Reading;
+//                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
+//                    next_state = ReadingAP;
+//                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
+//                    next_state = Precharging;
+//                else
+                next_state = Precharging;
             end
             
             ReadingAP: begin
@@ -356,7 +378,7 @@ parameter Power_On = 5'd0,
                 Addr_out [10] = A_10;               // 0 = no precharge
                 Addr_out [11] = Addr_Column_11;
                 Addr_out [12] = A_12;
-                Addr_out [14:13] = 2'b00;
+                Addr_out [14:13] = A13_14;
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Write lower 8 bits
                 UDM <= 1'b0;                        // Write lower 8 bits
@@ -378,10 +400,11 @@ parameter Power_On = 5'd0,
                 Addr_out [10] = A_10;               // 0 = no precharge
                 Addr_out [11] = Addr_Column_11;
                 Addr_out [12] = A_12;
+                Addr_out [14:13] = A13_14;
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
-                MCRegis <= DQ;                    // This needs to be changed
+                DQ_read <= DQ;                    // This needs to be changed
                 UDQS <= CLK;
                 LDQS <= CLK;
             end
@@ -398,7 +421,7 @@ parameter Power_On = 5'd0,
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
-                MCRegis <= DQ;                    // needs to be changed 
+                DQ_read <= DQ;                    
                 
             end
             
@@ -416,7 +439,7 @@ parameter Power_On = 5'd0,
                 
                 //For showcasing
                 Addr_out [9:0] = 10'bx;
-                MCRegis = 16'bx;
+                DQ_read = 16'bx;
                 
                 precharge_timer = 0;
             end
@@ -427,7 +450,7 @@ parameter Power_On = 5'd0,
     end
     
     // Tri-state buffer to control my_bus
-    assign DQ = (DQ_dir) ? DQ_input : 16'bz;
+    assign DQ = (DQ_dir) ? Data_input : 16'bz;
     
     
 endmodule
