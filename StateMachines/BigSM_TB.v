@@ -73,8 +73,8 @@ module BigSM_TB();
     .Addr_out(Addr_out),
     .A_10(A_10),
     .A_12(A_12),
-    .MCRegis(DQ_out),
-    .DQ_input(16'b1111000000000000),
+    .DQ_read(DQ_out),
+    .Data_input(16'b1111000000000000),
     .DQ(DQ_line),
     
     // Extra outputs
@@ -136,21 +136,12 @@ module BigSM_TB();
     #20 MRS = 0;  // State: Write_Leveling (5) -> Idle (4)
     #20 REF = 1;
     #20 REF = 0;
-    #150 ACT = 1;
-    #20  ACT = 0;
-         WRITE = 1;
-    #10  WRITE = 0;
-         PRE = 1;
-    #10
-        PRE = 0;
-    #40 ACT = 1;
-    #20  ACT = 0;
-         READ = 1;
-    #10  READ = 0;
-         PRE = 1;   
-    #10
-         PRE = 0;  
-    
+    #150 WRITE = 1; 
+    #50 REF = 1;
+    #20 REF = 0;
+        
+    #150 READ = 1;
+    #50 READ = 0;
     
     // Finish simulation
     #100;
