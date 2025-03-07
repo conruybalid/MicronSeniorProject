@@ -4,8 +4,8 @@
 #### - rename the used ports (in each line, after get_ports) according to the top level signal names in the project
 
 ## Clock Signal
-#set_property -dict { PACKAGE_PIN AD11  IOSTANDARD LVDS     } [get_ports { sysclk_n }]; #IO_L12N_T1_MRCC_33 Sch=sysclk_n
-set_property -dict { PACKAGE_PIN AD12  IOSTANDARD LVDS     } [get_ports { CLK }]; #IO_L12P_T1_MRCC_33 Sch=sysclk_p
+set_property -dict { PACKAGE_PIN AD11  IOSTANDARD LVDS     } [get_ports { sysclk_n }]; #IO_L12N_T1_MRCC_33 Sch=sysclk_n
+set_property -dict { PACKAGE_PIN AD12  IOSTANDARD LVDS     } [get_ports { sysclk_p }]; #IO_L12P_T1_MRCC_33 Sch=sysclk_p
 
 #DDR3 LEFT SIDE
 #set_property -dict { PACKAGE_PIN AG9    IOSTANDARD LVCMOS33 } [get_ports {A15_NC}]
@@ -31,7 +31,7 @@ set_property -dict { PACKAGE_PIN AB10   IOSTANDARD SSTL15 } [get_ports { BA_out[
 
 set_property -dict { PACKAGE_PIN AC11   IOSTANDARD SSTL15 } [get_ports {BA_out[2]}]
 set_property -dict { PACKAGE_PIN AB9    IOSTANDARD DIFF_SSTL15 } [get_ports {CK}]
-set_property -dict { PACKAGE_PIN AC9    IOSTANDARD DIFF_SSTL15 } [get_ports {CK#}]
+set_property -dict { PACKAGE_PIN AC9    IOSTANDARD DIFF_SSTL15 } [get_ports {CK_n}]
 set_property -dict { PACKAGE_PIN AJ9    IOSTANDARD SSTL15 } [get_ports {CKE}]
 set_property -dict { PACKAGE_PIN AH12   IOSTANDARD SSTL15 } [get_ports {CS}]
 set_property -dict { PACKAGE_PIN AE11   IOSTANDARD SSTL15 } [get_ports {RAS}]
@@ -498,3 +498,11 @@ set_property -dict { PACKAGE_PIN P27   IOSTANDARD LVCMOS33 } [get_ports { switch
 #set_property -dict { PACKAGE_PIN AA17  IOSTANDARD LVCMOS18 } [get_ports { USB_OTG_STP }]; #IO_L23P_T3_32 Sch=usb_otg_stp
 #set_property -dict { PACKAGE_PIN AF16  IOSTANDARD LVCMOS18 } [get_ports { USB_OTG_VBUSOC }]; #IO_L6N_T0_VREF_32 Sch=usb_otg_vbusoc
 
+### Configuration options, can be used for all designs
+#set_property CONFIG_VOLTAGE 3.3 [current_design]
+#set_property CFGBVS VCCO [current_design]
+
+### SPI configuration mode options for QSPI boot, can be used for all designs
+#set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
+#set_property BITSTREAM.CONFIG.CONFIGRATE 33 [current_design]
+#set_property CONFIG_MODE SPIx4 [current_design]

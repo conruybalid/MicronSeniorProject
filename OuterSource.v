@@ -21,7 +21,8 @@
 
 
 module OuterSource(
-    input wire CLK,
+    input wire sysclk_n,
+    input wire sysclk_p,
     input wire btnl,
     input wire btnr,
     inout wire [15:0] DQ,
@@ -36,13 +37,20 @@ module OuterSource(
     output wire [7:0] led,
     input wire [7:0] switch,
     inout wire LDQS,
-    inout wire UDQS
+    inout wire UDQS,
+    
+    output wire CK,
+    output wire CK_n,
+    output wire CKE
 
     );    
 
+    assign CK = sysclk_p;
+    assign CK_n = sysclk_n;
+    assign CKE = 1'b1;
     
     Big_SM_Template SM (
-        .CLK(CLK),
+        .CLK(sysclk_p),
 //        .RESET(RESET),
         .ZQCL(1'b1),
 //        .MRS(MRS),

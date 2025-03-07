@@ -246,6 +246,8 @@ parameter Power_On = 5'd0,
                     next_state = Writing;
                   else if (READ)
                     next_state = Reading;
+                  else
+                    next_state = Precharging;
             end
             
             Active_Power_Down: begin
