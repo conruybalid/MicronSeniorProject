@@ -155,6 +155,8 @@ parameter Power_On = 5'd0,
         
        if (next_state != Writing)
             DQ_dir = 1'b0;
+       else
+            DQ_dir = 1'b1; //make the DQ an input
         
 	   state <= next_state;
 
@@ -385,7 +387,6 @@ parameter Power_On = 5'd0,
                 LDM <= 1'b0;                        // Write lower 8 bits
                 UDM <= 1'b0;                        // Write lower 8 bits
                 //DQ <= MCRegis;                    // 16 bit data line
-                DQ_dir = 1'b1; //make the DQ an input
                 UDQS <= CLK;
                 LDQS <= CLK;
             end

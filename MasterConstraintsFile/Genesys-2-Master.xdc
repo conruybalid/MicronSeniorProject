@@ -9,62 +9,62 @@ set_property -dict { PACKAGE_PIN AD12  IOSTANDARD LVDS     } [get_ports { sysclk
 
 #DDR3 LEFT SIDE
 #set_property -dict { PACKAGE_PIN AG9    IOSTANDARD LVCMOS33 } [get_ports {A15_NC}]
-set_property -dict { PACKAGE_PIN AH9    IOSTANDARD SSTL15 } [get_ports { Addr_out[14] }]
-set_property -dict { PACKAGE_PIN AA12   IOSTANDARD SSTL15 } [get_ports { Addr_out[13] }]
-set_property -dict { PACKAGE_PIN AB12   IOSTANDARD SSTL15 } [get_ports { Addr_out[12] }]
-set_property -dict { PACKAGE_PIN AA8    IOSTANDARD SSTL15 } [get_ports { Addr_out[11] }]
-set_property -dict { PACKAGE_PIN AB8    IOSTANDARD SSTL15 } [get_ports { Addr_out[10] }]
+set_property -dict { PACKAGE_PIN AH9    IOSTANDARD SSTL15 } [get_ports { Addr_out[14] }];
+set_property -dict { PACKAGE_PIN AA12   IOSTANDARD SSTL15 } [get_ports { Addr_out[13] }];
+set_property -dict { PACKAGE_PIN AB12   IOSTANDARD SSTL15 } [get_ports { Addr_out[12] }];
+set_property -dict { PACKAGE_PIN AA8    IOSTANDARD SSTL15 } [get_ports { Addr_out[11] }];
+set_property -dict { PACKAGE_PIN AB8    IOSTANDARD SSTL15 } [get_ports { Addr_out[10] }];
 
-set_property -dict { PACKAGE_PIN Y11    IOSTANDARD SSTL15 } [get_ports { Addr_out[9]}]
-set_property -dict { PACKAGE_PIN Y10    IOSTANDARD SSTL15 } [get_ports { Addr_out[8]}]
-set_property -dict { PACKAGE_PIN AA11   IOSTANDARD SSTL15 } [get_ports { Addr_out[7] }]
-set_property -dict { PACKAGE_PIN AA10   IOSTANDARD SSTL15 } [get_ports { Addr_out[6] }]
-set_property -dict { PACKAGE_PIN AA13   IOSTANDARD SSTL15 } [get_ports { Addr_out[5] }]
-set_property -dict { PACKAGE_PIN AD9    IOSTANDARD SSTL15 } [get_ports { Addr_out[4] }]
+set_property -dict { PACKAGE_PIN Y11    IOSTANDARD SSTL15 } [get_ports { Addr_out[9]}];
+set_property -dict { PACKAGE_PIN Y10    IOSTANDARD SSTL15 } [get_ports { Addr_out[8]}];
+set_property -dict { PACKAGE_PIN AA11   IOSTANDARD SSTL15 } [get_ports { Addr_out[7] }];
+set_property -dict { PACKAGE_PIN AA10   IOSTANDARD SSTL15 } [get_ports { Addr_out[6] }];
+set_property -dict { PACKAGE_PIN AA13   IOSTANDARD SSTL15 } [get_ports { Addr_out[5] }];
+set_property -dict { PACKAGE_PIN AD9    IOSTANDARD SSTL15 } [get_ports { Addr_out[4] }];
 
-set_property -dict { PACKAGE_PIN AC10   IOSTANDARD SSTL15 } [get_ports { Addr_out[3] }]
-set_property -dict { PACKAGE_PIN AD8    IOSTANDARD SSTL15 } [get_ports { Addr_out[2] }]
-set_property -dict { PACKAGE_PIN AE8    IOSTANDARD SSTL15 } [get_ports { Addr_out[1] }]
-set_property -dict { PACKAGE_PIN AC12   IOSTANDARD SSTL15 } [get_ports { Addr_out[0] }]
-set_property -dict { PACKAGE_PIN AE9    IOSTANDARD SSTL15 } [get_ports { BA_out[0] }]
-set_property -dict { PACKAGE_PIN AB10   IOSTANDARD SSTL15 } [get_ports { BA_out[1] }]
+set_property -dict { PACKAGE_PIN AC10   IOSTANDARD SSTL15 } [get_ports { Addr_out[3] }];
+set_property -dict { PACKAGE_PIN AD8    IOSTANDARD SSTL15 } [get_ports { Addr_out[2] }];
+set_property -dict { PACKAGE_PIN AE8    IOSTANDARD SSTL15 } [get_ports { Addr_out[1] }];
+set_property -dict { PACKAGE_PIN AC12   IOSTANDARD SSTL15 } [get_ports { Addr_out[0] }];
+set_property -dict { PACKAGE_PIN AE9    IOSTANDARD SSTL15 } [get_ports { BA_out[0] }];
+set_property -dict { PACKAGE_PIN AB10   IOSTANDARD SSTL15 } [get_ports { BA_out[1] }];
 
-set_property -dict { PACKAGE_PIN AC11   IOSTANDARD SSTL15 } [get_ports {BA_out[2]}]
-set_property -dict { PACKAGE_PIN AB9    IOSTANDARD DIFF_SSTL15 } [get_ports {CK}]
-set_property -dict { PACKAGE_PIN AC9    IOSTANDARD DIFF_SSTL15 } [get_ports {CK_n}]
-set_property -dict { PACKAGE_PIN AJ9    IOSTANDARD SSTL15 } [get_ports {CKE}]
-set_property -dict { PACKAGE_PIN AH12   IOSTANDARD SSTL15 } [get_ports {CS}]
-set_property -dict { PACKAGE_PIN AE11   IOSTANDARD SSTL15 } [get_ports {RAS}]
+set_property -dict { PACKAGE_PIN AC11   IOSTANDARD SSTL15 } [get_ports {BA_out[2]}];
+set_property -dict { PACKAGE_PIN AB9    IOSTANDARD DIFF_SSTL15 } [get_ports {CK}];
+set_property -dict { PACKAGE_PIN AC9    IOSTANDARD DIFF_SSTL15 } [get_ports {CK_n}];
+set_property -dict { PACKAGE_PIN AJ9    IOSTANDARD SSTL15 } [get_ports {CKE}];
+set_property -dict { PACKAGE_PIN AH12   IOSTANDARD SSTL15 } [get_ports {CS}];
+set_property -dict { PACKAGE_PIN AE11   IOSTANDARD SSTL15 } [get_ports {RAS}];
 
-set_property -dict { PACKAGE_PIN AF11   IOSTANDARD SSTL15 } [get_ports {CAS}]
-set_property -dict { PACKAGE_PIN AG13   IOSTANDARD SSTL15 } [get_ports {WE}]
+set_property -dict { PACKAGE_PIN AF11   IOSTANDARD SSTL15 } [get_ports {CAS}];
+set_property -dict { PACKAGE_PIN AG13   IOSTANDARD SSTL15 } [get_ports {WE}];
 
 #DDR3 RIGHT SIDE
-set_property -dict { PACKAGE_PIN AF6    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[15] }]
-set_property -dict { PACKAGE_PIN AF5    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[14] }]
-set_property -dict { PACKAGE_PIN AE5    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[13] }]
-set_property -dict { PACKAGE_PIN AE3    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[12] }]
-set_property -dict { PACKAGE_PIN AE4    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[11] }]
-set_property -dict { PACKAGE_PIN AF1    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[10] }]
+set_property -dict { PACKAGE_PIN AF6    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[15] }];
+set_property -dict { PACKAGE_PIN AF5    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[14] }];
+set_property -dict { PACKAGE_PIN AE5    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[13] }];
+set_property -dict { PACKAGE_PIN AE3    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[12] }];
+set_property -dict { PACKAGE_PIN AE4    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[11] }];
+set_property -dict { PACKAGE_PIN AF1    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[10] }];
 
-set_property -dict { PACKAGE_PIN AE1    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[9] }]
-set_property -dict { PACKAGE_PIN AF2    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[8] }]
-set_property -dict { PACKAGE_PIN AC7    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[7] }]
-set_property -dict { PACKAGE_PIN AE6    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[6] }]
-set_property -dict { PACKAGE_PIN AD6    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[5] }]
-set_property -dict { PACKAGE_PIN AC4    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[4] }]
+set_property -dict { PACKAGE_PIN AE1    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[9] }];
+set_property -dict { PACKAGE_PIN AF2    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[8] }];
+set_property -dict { PACKAGE_PIN AC7    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[7] }];
+set_property -dict { PACKAGE_PIN AE6    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[6] }];
+set_property -dict { PACKAGE_PIN AD6    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[5] }];
+set_property -dict { PACKAGE_PIN AC4    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[4] }];
 
-set_property -dict { PACKAGE_PIN AC5    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[3] }]
-set_property -dict { PACKAGE_PIN AC1    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[2] }]
-set_property -dict { PACKAGE_PIN AC2    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[1] }]
-set_property -dict { PACKAGE_PIN AD3    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[0] }]
-set_property -dict { PACKAGE_PIN AG4    IOSTANDARD DIFF_SSTL15_T_DCI } [get_ports {UDQS}]
+set_property -dict { PACKAGE_PIN AC5    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[3] }];
+set_property -dict { PACKAGE_PIN AC1    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[2] }];
+set_property -dict { PACKAGE_PIN AC2    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[1] }];
+set_property -dict { PACKAGE_PIN AD3    IOSTANDARD SSTL15_T_DCI } [get_ports { DQ[0] }];
+set_property -dict { PACKAGE_PIN AG4    IOSTANDARD DIFF_SSTL15_T_DCI } [get_ports {UDQS}];
 #set_property -dict { PACKAGE_PIN AG3    IOSTANDARD DIFF_SSTL15_T_DCI } [get_ports {UDQS#}]
 
-set_property -dict { PACKAGE_PIN AD2    IOSTANDARD DIFF_SSTL15_T_DCI } [get_ports {LDQS}]
+set_property -dict { PACKAGE_PIN AD2    IOSTANDARD DIFF_SSTL15_T_DCI } [get_ports {LDQS}];
 #set_property -dict { PACKAGE_PIN AD1    IOSTANDARD DIFF_SSTL15_T_DCI } [get_ports {LDQS#}]
-set_property -dict { PACKAGE_PIN AD4    IOSTANDARD SSTL15 } [get_ports {LDM}]
-set_property -dict { PACKAGE_PIN AF3    IOSTANDARD SSTL15 } [get_ports {UDM}]
+set_property -dict { PACKAGE_PIN AD4    IOSTANDARD SSTL15 } [get_ports {LDM}];
+set_property -dict { PACKAGE_PIN AF3    IOSTANDARD SSTL15 } [get_ports {UDM}];
 #set_property -dict { PACKAGE_PIN AK9    IOSTANDARD SSTL15 } [get_ports {ODT}]
 #set_property -dict { PACKAGE_PIN GND    IOSTANDARD LVCMOS } [get_ports {ZQ}]
 #set_property -dict { PACKAGE_PIN AG5    IOSTANDARD LVCMOS15 } [get_ports {RESET#}]
