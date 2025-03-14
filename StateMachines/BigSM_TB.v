@@ -139,9 +139,10 @@ module BigSM_TB();
     #150 WRITE = 1; 
     #50 REF = 1;
     #20 REF = 0;
+    WRITE = 0;
         
     #150 READ = 1;
-    #50 READ = 0;
+    #150 READ = 0;
     
     // Finish simulation
     #100;

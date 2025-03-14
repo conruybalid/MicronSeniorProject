@@ -81,11 +81,17 @@ module Big_SM_Template(
     reg [31:0] ref_timer; // Assuming a 32-bit timer for simplicity
     reg [31:0] precharge_timer;
     reg [15:0] last_row_accessed;
+    reg [3:0] Wait;
+    reg [3:0] Strobe_num;
     
     reg DQ_dir;
     
     parameter IDLE = 2'b00, REFRESH = 2'b01, REF_WAIT = 2'b10;
     parameter tRFC = 32'd10; // Example refresh cycle time (103)
+    parameter RL = 4'd5, WL = 4'd7;
+    
+    reg [3:0] RW_latency;
+    
     
 parameter Power_On = 5'd0,
           Reset_Procedure = 5'd1,
@@ -104,7 +110,9 @@ parameter Power_On = 5'd0,
           Reading = 5'd14,
           ReadingAP = 5'd15,
           Precharging = 5'd16,
-          Refresh_Wait = 5'd17;
+          Refresh_Wait = 5'd17,
+          Strobe_Wait = 5'd18,
+          Strobe = 5'd19;
 
     reg [8*20:1] state_name; // 20-character string
     
@@ -124,6 +132,8 @@ parameter Power_On = 5'd0,
             ReadingAP: state_name = "ReadingAP";
             Precharging: state_name = "Precharging";
             Refresh_Wait: state_name = "Refresh_Wait";
+            Strobe_Wait: state_name = "Strobe_Wait";
+            Strobe: state_name = "Strobe";
             default: state_name = "Unknown";
         endcase
     end
@@ -157,6 +167,17 @@ parameter Power_On = 5'd0,
             DQ_dir = 1'b0;
        else
             DQ_dir = 1'b1; //make the DQ an input
+            
+        if (state == Strobe_Wait)
+            Wait = Wait + 1;
+        else 
+            Wait = 0;
+        
+           
+        if (state == Strobe)
+            Strobe_num = Strobe_num + 1;
+        else
+            Strobe_num = 0;
         
 	   state <= next_state;
 
@@ -268,7 +289,7 @@ parameter Power_On = 5'd0,
 //                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
 //                    next_state = Precharging;
 //                else
-                next_state = Precharging;
+                next_state = Strobe_Wait;
             end
             
             WritingAP: begin
@@ -287,11 +308,25 @@ parameter Power_On = 5'd0,
 //                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
 //                    next_state = Precharging;
 //                else
-                next_state = Precharging;
+                next_state = Strobe_Wait;
             end
             
             ReadingAP: begin
                 next_state = Precharging;
+            end
+            
+             Strobe_Wait: begin
+                if (Wait >= RW_latency -1)
+                    next_state = Strobe;
+                else
+                    next_state = Strobe_Wait;
+            end
+           
+            Strobe: begin
+                if (Strobe_num == 5 -1)
+                    next_state = Precharging;
+                else
+                    next_state = Strobe;
             end
             
             Precharging: begin
@@ -325,7 +360,9 @@ parameter Power_On = 5'd0,
                 RAS =1'b1;
                 CAS = 1'b1;
                 WE = 1'b1;
-                BA_out = 3'bx;		      
+                BA_out = 3'bx;	
+                LDQS = 1'bx;
+                UDQS = 1'bx;	      
             end
             
             Write_Leveling: begin
@@ -387,8 +424,9 @@ parameter Power_On = 5'd0,
                 LDM <= 1'b0;                        // Write lower 8 bits
                 UDM <= 1'b0;                        // Write lower 8 bits
                 //DQ <= MCRegis;                    // 16 bit data line
-                UDQS <= CLK;
-                LDQS <= CLK;
+//                UDQS <= CLK;
+//                LDQS <= CLK;
+                RW_latency <= 4'd7;
             end
             
             WritingAP: begin
@@ -408,8 +446,9 @@ parameter Power_On = 5'd0,
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
                 DQ_read <= DQ;                    // This needs to be changed
-                UDQS <= CLK;
-                LDQS <= CLK;
+//                UDQS <= CLK;
+//                LDQS <= CLK;
+                RW_latency <= 4'd5;
             end
             
            ReadingAP: begin
@@ -426,6 +465,23 @@ parameter Power_On = 5'd0,
                 UDM <= 1'b0;                        // Read lower 8 bits
                 DQ_read <= DQ;                    
                 
+            end
+            
+            Strobe_Wait: begin
+               
+                RAS = 1'b1;
+                CAS = 1'b1;     // all the address stuff for NOP command are V in the document
+                WE = 1'b1;
+               
+                if (Wait == RW_latency -1) begin   // this is for one period of the clock the DQS is held low has to do with tRPRE
+                    LDQS = 0;
+                    UDQS = 0;
+                end
+            end
+           
+            Strobe: begin
+                LDQS = CLK;
+                UDQS = CLK;
             end
             
             Precharging: begin
