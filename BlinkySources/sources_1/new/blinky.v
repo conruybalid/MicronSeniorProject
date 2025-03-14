@@ -25,7 +25,7 @@
 module blinky(
     input clk_p,
     input clk_n,
-    output led
+    output [1:0] led
     );
     
     
@@ -40,7 +40,8 @@ module blinky(
     
     reg [24:0] count = 0;
  
-    assign led = count[24];
+    assign led[0] = count[24];
+    assign led[1] = !led[0];
      
     always @ (posedge(clk)) count <= count + 1;
     
