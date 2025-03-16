@@ -40,7 +40,7 @@ module Big_SM_Template(
     input A_12,                 // 1 = BL8 / 0 = BC4
     input [1:0] A13_14,
     input [2:0] BA_in,          // Activate | Write | Precharge (sometimes)
-    inout wire [15:0] DQ,	//DQ line output and input for memory controller
+    inout wire [7:0] DQ,	//DQ line output and input for memory controller
     output reg CS,
     output reg RAS,
     output reg CAS,
@@ -49,14 +49,18 @@ module Big_SM_Template(
     output reg [2:0] BA_out,    // Bank address
     output reg LDM,             // Lower 8 bit data mask - Write = 0 / Ignore (mask) data = 1
     output reg UDM,              // Upper 8 bit data mask - Write = 0 / Ignore (mask) data = 1
-    output reg [15:0] DQ_read,   // 16 bit internal memory controller register name can change
-    input [15:0] Data_input,
+    output reg [7:0] DQ_read,   // 16 bit internal memory controller register name can change
+    input [7:0] Data_input,
     output reg LDQS,            // Lower 8 bit data strobe
-    output reg UDQS          // Upper 8 bit data strobe
+    output reg UDQS,          // Upper 8 bit data strobe
 //    output [2:0] BA,
 //    output [15:0] A,
 //    output BC,
 //    output AP
+    
+    output reg [5:0] state
+
+
     );
     
     // Hardcoded Inputs    
@@ -75,7 +79,6 @@ module Big_SM_Template(
 //    wire A_12;
 //    assign  A_12 = ( A_12_input === 1'bz) ? 1'b1 :  A_12_input;                                // 1 = BL8 / 0 = BC4
     
-    reg [5:0] state;
     reg [5:0] next_state;
     
     reg [31:0] ref_timer; // Assuming a 32-bit timer for simplicity
@@ -163,9 +166,9 @@ parameter Power_On = 5'd0,
        else
 	       ref_timer = 0;
         
-       if (next_state != Writing)
+       if (next_state == Idle)
             DQ_dir = 1'b0;
-       else
+       else if (next_state == Writing)
             DQ_dir = 1'b1; //make the DQ an input
             
         if (state == Strobe_Wait)
@@ -209,11 +212,11 @@ parameter Power_On = 5'd0,
             end
             
             Idle: begin
-                if (MRS && !(REF || ACT))
+                if (MRS && !(REF))
                     next_state = Write_Leveling;
-                else if (REF && !(MRS || ACT))
+                else if (REF)// && !(MRS || ACT))
                     next_state = Refreshing;
-                else if ((ACT || READ || WRITE) && !(MRS || REF))
+                else if (( READ || WRITE) && !(MRS || REF))
                     next_state = Activating;
                 else
                     next_state = Idle;
@@ -497,8 +500,8 @@ parameter Power_On = 5'd0,
                 UDM <= 1'b1; 
                 
                 //For showcasing
-                Addr_out [9:0] = 10'bx;
-                DQ_read = 16'bx;
+//                Addr_out [9:0] = 10'bx;
+//                DQ_read = 16'bx;
                 
                 precharge_timer = 0;
             end
