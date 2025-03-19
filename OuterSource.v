@@ -37,21 +37,27 @@ module OuterSource(
     output wire [7:0] led, 
     input wire [7:0] switch,
     inout wire LDQS,
+    inout wire LDQS_n,
     inout wire UDQS,
+    inout wire UDQS_n,
     
-//    output wire CK,
-//    output wire CK_n,
-    output wire CKE
+    output wire CK,
+    output wire CK_n,
+    output wire CKE,
+    
+    output wire RESET
 
     );    
 
-//    assign CK = sysclk_p;
-//    assign CK_n = sysclk_n;
     assign CKE = 1'b1;
     
     wire clk;
     wire ref;
     wire [5:0] state_out;
+    
+    wire clk_diff_pos;
+    wire clk_diff_neg;
+    
     
     IBUFGDS clk_inst (
         .O(clk),
@@ -59,8 +65,22 @@ module OuterSource(
         .IB(sysclk_n)
     );
     
+     OBUFDS clkout_inst (
+        .O(CK),   // Differential output positive
+        .OB(CK_n),  // Differential output negative
+        .I(clk)         // Single-ended input clock
+    );
+    
+
+    
+    assign clk_diff_pos = CK;
+    assign clk_diff_neg = CK_n;
+    
+    
     Big_SM_Template SM (
         .CLK(clk),
+        .diff_input_clk(clk_diff_pos),
+        .diff_input_clk_neg(clk_diff_neg),
 //        .RESET(RESET),
         .ZQCL(1'b1),
         .MRS(1'b0),
@@ -72,7 +92,7 @@ module OuterSource(
 //        .WRITE_AP(WRITE_AP),
 //        .READ_AP(READ_AP),
 //        .PRE(PRE),
-        .Addr_Row(15'd1),
+        .Addr_Row(15'd5),
         .Addr_Column(10'd1),
         .Addr_Column_11(1'b1),
         .A_10(1'b0),
@@ -88,13 +108,18 @@ module OuterSource(
         .BA_out(BA_out),
         .LDM(LDM),
         .UDM(UDM),
-        .DQ_read(led[7:1]),
+        .DQ_read(led[7:0]),
         .Data_input(switch),
         .LDQS(LDQS),
         .UDQS(UDQS),
+        .LDQS_n(LDQS_n),
+        .UDQS_n(UDQS_n),
+        .RESET(RESET),
+        
         .state(state_out)
     );
     
+   
 
     reg [31:0] clk_count;
     
@@ -115,7 +140,7 @@ module OuterSource(
     //assign ref = (clk_count >= 32'd550) ? 1'b1 : 1'b0;
    
     
-    assign led[0] = (state_out == 5'd4) ? 1'b1 : 1'b0;
+//    assign led[0] = (state_out == 5'd4) ? 1'b1 : 1'b0;
     
     
     

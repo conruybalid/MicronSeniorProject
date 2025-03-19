@@ -22,7 +22,8 @@
 
 module Big_SM_Template(
     input CLK,
-    input RESET,
+    input diff_input_clk,
+    input diff_input_clk_neg,
     input ZQCL,
     input MRS,
     input REF,
@@ -52,11 +53,16 @@ module Big_SM_Template(
     output reg [7:0] DQ_read,   // 16 bit internal memory controller register name can change
     input [7:0] Data_input,
     output reg LDQS,            // Lower 8 bit data strobe
+    output reg LDQS_n,
     output reg UDQS,          // Upper 8 bit data strobe
+    output reg UDQS_n,
 //    output [2:0] BA,
 //    output [15:0] A,
 //    output BC,
 //    output AP
+
+    output reg RESET,
+
     
     output reg [5:0] state
 
@@ -83,6 +89,8 @@ module Big_SM_Template(
     
     reg [31:0] ref_timer; // Assuming a 32-bit timer for simplicity
     reg [31:0] precharge_timer;
+    reg [31:0] activate_timer;
+    reg [31:0] reset_timer;
     reg [15:0] last_row_accessed;
     reg [3:0] Wait;
     reg [3:0] Strobe_num;
@@ -90,11 +98,14 @@ module Big_SM_Template(
     reg DQ_dir;
     
     parameter IDLE = 2'b00, REFRESH = 2'b01, REF_WAIT = 2'b10;
-    parameter tRFC = 32'd10; // Example refresh cycle time (103)
+    parameter tRFC = 32'd103; // Example refresh cycle time (103)
+    parameter tRCD= 32'd10;
     parameter RL = 4'd5, WL = 4'd7;
     
     reg [3:0] RW_latency;
     
+    reg read_select;
+    reg write_select;
     
 parameter Power_On = 5'd0,
           Reset_Procedure = 5'd1,
@@ -150,6 +161,7 @@ parameter Power_On = 5'd0,
         CAS = 1'b1;
         WE = 1'b1;
         DQ_dir = 1'b0;
+        RESET = 1'b1;
     end
      
      
@@ -161,6 +173,12 @@ parameter Power_On = 5'd0,
             precharge_timer = precharge_timer + 1;
         
        //Transition changes
+       if (state == Reset_Procedure)
+          reset_timer = reset_timer + 1;
+       else
+          reset_timer = 0;
+       
+       
        if (state == Refresh_Wait)
 	       ref_timer = ref_timer + 1;
        else
@@ -181,6 +199,11 @@ parameter Power_On = 5'd0,
             Strobe_num = Strobe_num + 1;
         else
             Strobe_num = 0;
+            
+        if (state == Bank_Active)
+            activate_timer = activate_timer + 1;
+        else
+            activate_timer = 0;
         
 	   state <= next_state;
 
@@ -197,7 +220,10 @@ parameter Power_On = 5'd0,
             end
             
             Reset_Procedure: begin
-                next_state = Initialization;
+                if (reset_timer < 32'd10)
+                    next_state = Reset_Procedure;
+                else
+                    next_state = Initialization;
             end
             
             Initialization: begin
@@ -216,7 +242,7 @@ parameter Power_On = 5'd0,
                     next_state = Write_Leveling;
                 else if (REF)// && !(MRS || ACT))
                     next_state = Refreshing;
-                else if (( READ || WRITE) && !(MRS || REF))
+                else if (( read_select || write_select) && !(MRS || REF))
                     next_state = Activating;
                 else
                     next_state = Idle;
@@ -268,9 +294,11 @@ parameter Power_On = 5'd0,
 //                    next_state = Precharging;
 //                else
 //                    next_state = Bank_Active;
-                  if (WRITE)
+                  if (activate_timer < tRCD)
+                    next_state = Bank_Active;
+                  else if (write_select)
                     next_state = Writing;
-                  else if (READ)
+                  else if (read_select)
                     next_state = Reading;
                   else
                     next_state = Precharging;
@@ -350,9 +378,12 @@ parameter Power_On = 5'd0,
             end
             
             Reset_Procedure: begin
+                RESET = 1'b0; //Keep RESET low for 100 ns
             end
             
             Initialization: begin
+                RESET = 1'b1;
+
             end
             
             ZQ_Calibration: begin
@@ -365,7 +396,11 @@ parameter Power_On = 5'd0,
                 WE = 1'b1;
                 BA_out = 3'bx;	
                 LDQS = 1'bx;
-                UDQS = 1'bx;	      
+                UDQS = 1'bx;	
+                
+                read_select <= READ;
+                write_select <= WRITE;
+                      
             end
             
             Write_Leveling: begin
@@ -403,11 +438,11 @@ parameter Power_On = 5'd0,
             end
             
             Bank_Active: begin
-                CS = 1'b0;
-                RAS =1'b1;
-                CAS = 1'b1;
-                WE = 1'b1;		     
-                Addr_out <= 15'bx;
+//                CS = 1'b0;
+//                RAS =1'b1; //why not 0?
+//                CAS = 1'b1;
+//                WE = 1'b1;		     
+//                Addr_out <= 15'bx;
             end
             
             Active_Power_Down: begin
@@ -426,6 +461,7 @@ parameter Power_On = 5'd0,
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Write lower 8 bits
                 UDM <= 1'b0;                        // Write lower 8 bits
+//                DQ_read <= 8'b00000000;
                 //DQ <= MCRegis;                    // 16 bit data line
 //                UDQS <= CLK;
 //                LDQS <= CLK;
@@ -472,9 +508,9 @@ parameter Power_On = 5'd0,
             
             Strobe_Wait: begin
                
-                RAS = 1'b1;
-                CAS = 1'b1;     // all the address stuff for NOP command are V in the document
-                WE = 1'b1;
+//                RAS = 1'b1;
+//                CAS = 1'b1;     // all the address stuff for NOP command are V in the document
+//                WE = 1'b1;
                
                 if (Wait == RW_latency -1) begin   // this is for one period of the clock the DQS is held low has to do with tRPRE
                     LDQS = 0;
@@ -483,8 +519,10 @@ parameter Power_On = 5'd0,
             end
            
             Strobe: begin
-                LDQS = CLK;
-                UDQS = CLK;
+                LDQS = diff_input_clk;
+                LDQS_n = diff_input_clk_neg;
+                UDQS = diff_input_clk;
+                UDQS_n = diff_input_clk_neg;
             end
             
             Precharging: begin
@@ -512,7 +550,7 @@ parameter Power_On = 5'd0,
     end
     
     // Tri-state buffer to control my_bus
-    assign DQ = (DQ_dir) ? Data_input : 16'bz;
+    assign DQ[7:0] = (DQ_dir) ? Data_input : 8'bz;
     
     
 endmodule
