@@ -38,8 +38,8 @@ module OuterSource(
     input wire [7:0] switch,
     inout wire LDQS,
     inout wire LDQS_n,
-    inout wire UDQS,
-    inout wire UDQS_n,
+//    inout wire UDQS,
+//    inout wire UDQS_n,
     
     output wire CK,
     output wire CK_n,
@@ -71,16 +71,17 @@ module OuterSource(
         .I(clk)         // Single-ended input clock
     );
     
-
-    
-    assign clk_diff_pos = CK;
-    assign clk_diff_neg = CK_n;
+//     OBUFDS clkout_DQS (
+//        .O(clk_diff_pos),   // Differential output positive
+//        .OB(clk_diff_neg),  // Differential output negative
+//        .I(clk)         // Single-ended input clock
+//    );
     
     
     Big_SM_Template SM (
         .CLK(clk),
-        .diff_input_clk(clk_diff_pos),
-        .diff_input_clk_neg(clk_diff_neg),
+//        .diff_input_clk(clk_diff_pos),
+//        .diff_input_clk_neg(clk_diff_neg),
 //        .RESET(RESET),
         .ZQCL(1'b1),
         .MRS(1'b0),
@@ -111,9 +112,9 @@ module OuterSource(
         .DQ_read(led[7:0]),
         .Data_input(switch),
         .LDQS(LDQS),
-        .UDQS(UDQS),
+//        .UDQS(UDQS),
         .LDQS_n(LDQS_n),
-        .UDQS_n(UDQS_n),
+//        .UDQS_n(UDQS_n),
         .RESET(RESET),
         
         .state(state_out)

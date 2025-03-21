@@ -52,10 +52,10 @@ module Big_SM_Template(
     output reg UDM,              // Upper 8 bit data mask - Write = 0 / Ignore (mask) data = 1
     output reg [7:0] DQ_read,   // 16 bit internal memory controller register name can change
     input [7:0] Data_input,
-    output reg LDQS,            // Lower 8 bit data strobe
-    output reg LDQS_n,
-    output reg UDQS,          // Upper 8 bit data strobe
-    output reg UDQS_n,
+    output wire LDQS,            // Lower 8 bit data strobe
+    output wire LDQS_n,
+    output wire UDQS,          // Upper 8 bit data strobe
+    output wire UDQS_n,
 //    output [2:0] BA,
 //    output [15:0] A,
 //    output BC,
@@ -130,6 +130,20 @@ parameter Power_On = 5'd0,
 
     reg [8*20:1] state_name; // 20-character string
     
+    reg strobe_input;
+    
+    OBUFDS clkout_LDQS (
+        .O(LDQS),   // Differential output positive
+        .OB(LDQS_n),  // Differential output negative
+        .I(strobe_input)         // Single-ended input clock
+    );
+    
+//    OBUFDS clkout_UDQS (
+//        .O(UDQS),   // Differential output positive
+//        .OB(UDQS_n),  // Differential output negative
+//        .I(strobe_input)         // Single-ended input clock
+//    );
+    
     always @(*) begin
         case (state)
             Power_On: state_name = "Power_On";
@@ -152,6 +166,11 @@ parameter Power_On = 5'd0,
         endcase
     end
      
+    reg read_strobe;
+    reg [3:0] DQ_read_bit;
+    
+    wire clk_90;
+    
     // Initialize state
     initial begin
         state = Power_On;
@@ -162,6 +181,8 @@ parameter Power_On = 5'd0,
         WE = 1'b1;
         DQ_dir = 1'b0;
         RESET = 1'b1;
+        DQ_read_bit = 4'd0;
+        //read_strobe = 1'b1;
     end
      
      
@@ -354,7 +375,7 @@ parameter Power_On = 5'd0,
             end
            
             Strobe: begin
-                if (Strobe_num == 5 -1)
+                if (Strobe_num == 9)
                     next_state = Precharging;
                 else
                     next_state = Strobe;
@@ -394,9 +415,11 @@ parameter Power_On = 5'd0,
                 RAS =1'b1;
                 CAS = 1'b1;
                 WE = 1'b1;
-                BA_out = 3'bx;	
-                LDQS = 1'bx;
-                UDQS = 1'bx;	
+                BA_out = 3'bx;
+                strobe_input = 1'bx;
+ 	
+//                LDQS = 1'bx;
+//                UDQS = 1'bx;	
                 
                 read_select <= READ;
                 write_select <= WRITE;
@@ -484,27 +507,27 @@ parameter Power_On = 5'd0,
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
-                DQ_read <= DQ;                    // This needs to be changed
+//                DQ_read <= DQ;                    // This needs to be changed
 //                UDQS <= CLK;
 //                LDQS <= CLK;
                 RW_latency <= 4'd5;
             end
             
-           ReadingAP: begin
-                CS <= 1'b0;
-                RAS <= 1'b1;
-                CAS <= 1'b0;
-                WE <= 1'b1;
-                Addr_out [9:0] = Addr_Column;
-                Addr_out [10] = A_10;               // 1 =  precharge
-                Addr_out [11] = Addr_Column_11;     // Part of row addres
-                Addr_out [12] = A_12;               // 1 = BL8 / 0 = BC4
-                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
-                LDM <= 1'b0;                        // Read lower 8 bits
-                UDM <= 1'b0;                        // Read lower 8 bits
-                DQ_read <= DQ;                    
+//           ReadingAP: begin
+//                CS <= 1'b0;
+//                RAS <= 1'b1;
+//                CAS <= 1'b0;
+//                WE <= 1'b1;
+//                Addr_out [9:0] = Addr_Column;
+//                Addr_out [10] = A_10;               // 1 =  precharge
+//                Addr_out [11] = Addr_Column_11;     // Part of row addres
+//                Addr_out [12] = A_12;               // 1 = BL8 / 0 = BC4
+//                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
+//                LDM <= 1'b0;                        // Read lower 8 bits
+//                UDM <= 1'b0;                        // Read lower 8 bits
+//                //DQ_read <= DQ;                    
                 
-            end
+//            end
             
             Strobe_Wait: begin
                
@@ -512,17 +535,28 @@ parameter Power_On = 5'd0,
 //                CAS = 1'b1;     // all the address stuff for NOP command are V in the document
 //                WE = 1'b1;
                
-                if (Wait == RW_latency -1) begin   // this is for one period of the clock the DQS is held low has to do with tRPRE
-                    LDQS = 0;
-                    UDQS = 0;
+                if (Wait == RW_latency -1 && write_select) begin   // this is for one period of the clock the DQS is held low has to do with tRPRE
+                    strobe_input = 0;
                 end
             end
            
             Strobe: begin
-                LDQS = diff_input_clk;
-                LDQS_n = diff_input_clk_neg;
-                UDQS = diff_input_clk;
-                UDQS_n = diff_input_clk_neg;
+//                LDQS = diff_input_clk;
+//                LDQS_n = diff_input_clk_neg;
+//                UDQS = diff_input_clk;
+//                UDQS_n = diff_input_clk_neg;
+                  if (write_select) begin
+                      if (Strobe_num <= 5)
+                        strobe_input = CLK;
+                      else
+                        strobe_input = 1'b0;
+                  end
+                  else if (read_select) begin
+                      if (Strobe_num <= 3)
+                        read_strobe = 1'b1;
+                      else
+                        read_strobe = 1'b0;
+                  end
             end
             
             Precharging: begin
@@ -553,4 +587,91 @@ parameter Power_On = 5'd0,
     assign DQ[7:0] = (DQ_dir) ? Data_input : 8'bz;
     
     
+   
+    always @(clk_90) begin
+        if (read_strobe) begin
+             DQ_read_bit = DQ_read_bit + 1;
+             case(DQ_read_bit)
+                1: begin
+                    DQ_read[0] <= DQ[0];
+                end
+                2: begin
+                    DQ_read[1] <= DQ[1];
+                end
+                3: begin
+                    DQ_read[2] <= DQ[2];
+                end
+                4: begin
+                    DQ_read[3] <= DQ[3];
+                end
+                5: begin
+                    DQ_read[4] <= DQ[4];
+                end
+                6: begin
+                    DQ_read[5] <= DQ[5];
+                end
+                7: begin
+                    DQ_read[6] <= DQ[6];
+                end
+                8: begin
+                    DQ_read[7] <= DQ[7];
+                end
+                default: begin
+                    DQ_read_bit = 0;
+                end          
+             endcase
+        end
+        else
+            DQ_read_bit = 0;
+                
+    end
+     
+    phase_shifted_clock phaseShift (
+        .clk_in(CLK),
+        .rst(1'b0),
+        .clk_out(clk_90)    
+    );
+    
 endmodule
+
+
+module phase_shifted_clock (
+    input  wire clk_in,   // Input clock (e.g., 100 MHz)
+    input  wire rst,      // Reset
+    output wire clk_out,  // Phase-shifted clock output
+    output reg  reg_value // Example register updating at clk_shifted
+);
+
+    wire clk_fb;       // Feedback clock for MMCM
+    wire clk_shifted;  // 90-degree phase-shifted clock
+    wire locked;       // MMCM lock signal
+
+    // MMCM instantiation for Kintex-7
+    MMCME2_BASE #(
+        .CLKIN1_PERIOD(10.0),    // Adjust this to match your input clock period (100 MHz = 10.0 ns)
+        .CLKFBOUT_MULT_F(10.0),  // Multiply input clock by 10
+        .CLKOUT0_DIVIDE_F(10.0), // Divide output to match input frequency
+        .CLKOUT0_PHASE(90.0)     // 90-degree phase shift
+    ) mmcm_inst (
+        .CLKIN1(clk_in),    // Input clock
+        .CLKFBIN(clk_fb),   // Feedback
+        .CLKFBOUT(clk_fb),  // Feedback output
+        .CLKOUT0(clk_shifted), // Phase-shifted clock
+        .LOCKED(locked),    // Locked signal
+        .RST(rst)           // Reset input
+    );
+
+    // Register update at phase-shifted clock
+    always @(posedge clk_shifted or posedge rst) begin
+        if (rst)
+            reg_value <= 0;
+        else
+            reg_value <= ~reg_value; // Example toggle
+    end
+
+    assign clk_out = clk_shifted; // Output the shifted clock
+
+endmodule
+
+
+
