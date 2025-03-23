@@ -19,94 +19,80 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-
+// Input vs output can be confusing
+// Inputs come from our Outer source, where we can specify addresses and data to write etc
+// Outputs leave this state machine, pass through our Outer Source, and are then inputs to the DRAM and LEDs
+// DQ is an exception. It is inout as we both Write and Read data from the same pins
 module Big_SM_Template(
-    input CLK,
-    input diff_input_clk,
-    input diff_input_clk_neg,
-    input ZQCL,
-    input MRS,
-    input REF,
-    input CKE,
-    input ACT,
-    input WRITE,
-    input READ,
-    input WRITE_AP,
-    input READ_AP,
-    input PRE,
-    input [14:0] Addr_Row,      // Used during Activate, open until next precharge
-    input [9:0] Addr_Column,    // Used during Write
-    input Addr_Column_11,       // A[11] Used during Write
-    input A_10,                 // Write - Precharge Y = 1 / N = 0  |  Precharge - One bank = 0 / All banks = 1
-    input A_12,                 // 1 = BL8 / 0 = BC4
-    input [1:0] A13_14,
-    input [2:0] BA_in,          // Activate | Write | Precharge (sometimes)
-    inout wire [7:0] DQ,	//DQ line output and input for memory controller
-    output reg CS,
-    output reg RAS,
-    output reg CAS,
-    output reg WE,
-    output reg [14:0] Addr_out, // Row or Column address depending on state
-    output reg [2:0] BA_out,    // Bank address
-    output reg LDM,             // Lower 8 bit data mask - Write = 0 / Ignore (mask) data = 1
-    output reg UDM,              // Upper 8 bit data mask - Write = 0 / Ignore (mask) data = 1
-    output reg [7:0] DQ_read,   // 16 bit internal memory controller register name can change
-    input [7:0] Data_input,
-    output wire LDQS,            // Lower 8 bit data strobe
-    output wire LDQS_n,
-    output wire UDQS,          // Upper 8 bit data strobe
-    output wire UDQS_n,
-//    output [2:0] BA,
-//    output [15:0] A,
-//    output BC,
-//    output AP
+    input wire CLK,                  // 200 Mhz / 200 ns
+    input wire Reset_input,           // Reset command, issued by pressing top button
+    input wire ZQCL,                 // ZQ Calibration - Set high
+    input wire MRS,                  // Mode Registers - Set low
+    input wire REF,                  // Refresh - Every 64 ms
+    input wire CKE,                  // Clock Enable - Should be set high for most states ***not currently using!!!*** should probably be an output
+    input wire ACT,                  // Activate state - No longer used, as we have write or read commands automatically activate
+    input wire WRITE,                // Write command - Controlled by left button
+    input wire READ,                 // Read command - Controlled by right button
+    input wire PRE,                  // Not currently using, could probably get rid of?
+    input wire [14:0] Addr_Row,      // Used during Activate state, open until next precharge
+    input wire [9:0] Addr_Column,    // Used during Write and Read states
+    input wire A_10,                 // Write & Read - Precharge Y = 1 / N = 0  |  Precharge - One bank = 0 / All banks = 1
+    input wire A_11,                 // Write & Read - Additional column address
+    input wire A_12,                 // Write & Read - 1 = BL8 (Burst Length 8 bits) / 0 = BC4 (Burst Chop 4 bits)
+    input wire [1:0] A13_14,         // Write & Read - Unnecessary bits
+    input wire [2:0] BA_in,          // Activate | Write | Precharge (sometimes) - Bank Address
+    input wire [7:0] Data_Write,     // Write - 1 byte is writen from our development board switches to the DQ line 
+    inout wire [7:0] DQ,	         // Data line connecting between memory controller and DRAM
+    inout wire LDQS,                 // Write & Read - Lower 8 bit data strobe, oscillates at each bit we read or write
+    inout wire LDQS_n,               // Differential pair to LDQS
+    inout wire UDQS,                 // Write & Read - Upper 8 bit data strobe, oscillates at each bit we read or write
+    inout wire UDQS_n,               // Differential pair to UDQ
+    output reg [7:0] Data_read,      // Read - 1 byte from DQ is read to this reg. It is then outputted to our LEDs
+    output reg CS,                   // Active Low - Chip select - Used to select state - Almost always active
+    output reg RAS,                  // Active Low - Row Address Strobe - Used to select state - Active in Refresh / Precharge / Activate
+    output reg CAS,                  // Active Low - Column Address Strobe  - Used to select state - Active in Refresh / Write / Read
+    output reg WE,                   // Active Low - Write Enable - Used to select state - Active in Precharge / Write
+    output reg RESET_Output,                // Reset (Reset command to DRAM Reset pin)
+    output reg [14:0] Addr_out,      // Row or Column address depending on state
+    output reg [2:0] BA_out,         // Bank address
+    output reg LDM,                  // Write - Lower 8 bit data mask - Write = 0 / Ignore (mask) data = 1
+    output reg UDM,                 // Write - Uppder 8 bit data mask - Write = 0 / Ignore (mask) data = 1
 
-    output reg RESET,
-
-    
-    output reg [5:0] state
-
-
+    output reg [5:0] state           // Output current state, currently used during testing
     );
     
-    // Hardcoded Inputs    
-//    wire [2:0] BA_in;
-//    assign BA_in = (BA_input === 3'bz) ? 3'b101 : BA_input;
-//    wire [2:0] A13_14;
-//    assign A13_14 = (A13_14_input === 2'bz) ? 2'b00 : A13_14_input;
-//    wire [14:0] Addr_Row;
-//    assign Addr_Row = (Addr_Row_input === 15'bz) ? 15'd1 : Addr_Row_input;
-//    wire [9:0]  Addr_Column;
-//    assign  Addr_Column = ( Addr_Column_input === 10'bz) ? 10'd1 :  Addr_Column_input;
-//    wire Addr_Column_11;
-//    assign  Addr_Column_11 = ( Addr_Column_11_input === 1'bz) ? 1'b1 :  Addr_Column_11_input;
-//    wire A_10;
-//    assign  A_10 = ( A_10_input === 1'bz) ? 1'b0 :  A_10_input;                                // Write - Precharge Y = 1 / N = 0  |  Precharge - One bank = 0 / All banks = 1
-//    wire A_12;
-//    assign  A_12 = ( A_12_input === 1'bz) ? 1'b1 :  A_12_input;                                // 1 = BL8 / 0 = BC4
+   wire clk_90;                      // Phase-shifted clock by 90 degrees. This allows reading DQS between rising and falling edges of clk_in
+   
+    reg [5:0] next_state;            // Used to select states in state machine
     
-    reg [5:0] next_state;
-    
-    reg [31:0] ref_timer; // Assuming a 32-bit timer for simplicity
+    reg [31:0] ref_timer;            // Refresh timer - Used to have refresh occurr every 64 ms
     reg [31:0] precharge_timer;
     reg [31:0] activate_timer;
     reg [31:0] reset_timer;
-    reg [15:0] last_row_accessed;
-    reg [3:0] Wait;
-    reg [3:0] Strobe_num;
+    reg [15:0] last_row_accessed;    // Not currently being used
+    reg [3:0] Wait;                  // Used for Strobing DQS
+    reg [3:0] Strobe_num;            // Used for Strobing DQS
     
-    reg DQ_dir;
+    
+    reg DQ_dir;                      // DQ Direction - Chooses whether DQ line is Writing or Reading
     
     parameter IDLE = 2'b00, REFRESH = 2'b01, REF_WAIT = 2'b10;
     parameter tRFC = 32'd103; // Example refresh cycle time (103)
     parameter tRCD= 32'd10;
     parameter RL = 4'd5, WL = 4'd7;
     
-    reg [3:0] RW_latency;
     
-    reg read_select;
-    reg write_select;
     
+    reg [3:0] RW_latency;            // Used for Strobing DQS - Read Write Latency
+    reg write_select;                // Used for Strobing DQS - Select Write strobe route
+    reg read_select;                 // Used for Strobing DQS - Select Read strobe route
+    
+    reg read_strobe;                 // Used for strobing
+    reg [3:0] DQ_read_bit;           // Used for strobing
+    
+    reg strobe_input;                // Used for strobing
+    
+    // Assign decimal values different states
 parameter Power_On = 5'd0,
           Reset_Procedure = 5'd1,
           Initialization = 5'd2,
@@ -128,14 +114,15 @@ parameter Power_On = 5'd0,
           Strobe_Wait = 5'd18,
           Strobe = 5'd19;
 
-    reg [8*20:1] state_name; // 20-character string
+    reg [8*20:1] state_name;                // 20-character string
     
-    reg strobe_input;
     
+    
+    // Create differential DQS from strobe input clock (DRAM requires differential strobe vs only positive)
     OBUFDS clkout_LDQS (
-        .O(LDQS),   // Differential output positive
-        .OB(LDQS_n),  // Differential output negative
-        .I(strobe_input)         // Single-ended input clock
+        .O(LDQS),                           // Differential output positive
+        .OB(LDQS_n),                        // Differential output negative
+        .I(strobe_input)                    // Single-ended input clock
     );
     
 //    OBUFDS clkout_UDQS (
@@ -144,6 +131,7 @@ parameter Power_On = 5'd0,
 //        .I(strobe_input)         // Single-ended input clock
 //    );
     
+    // Assign names to states, useful for simulation
     always @(*) begin
         case (state)
             Power_On: state_name = "Power_On";
@@ -165,11 +153,6 @@ parameter Power_On = 5'd0,
             default: state_name = "Unknown";
         endcase
     end
-     
-    reg read_strobe;
-    reg [3:0] DQ_read_bit;
-    
-    wire clk_90;
     
     // Initialize state
     initial begin
@@ -180,13 +163,14 @@ parameter Power_On = 5'd0,
         CAS = 1'b1;
         WE = 1'b1;
         DQ_dir = 1'b0;
-        RESET = 1'b1;
+        RESET_Output = 1'b1;
         DQ_read_bit = 4'd0;
         //read_strobe = 1'b1;
     end
      
      
-    // State Transition logic
+    // Refreshing and strobng 
+    // Add something about what this always block does, then comments bove each if statement
     always @(posedge CLK) begin
         
         //Timer
@@ -199,28 +183,32 @@ parameter Power_On = 5'd0,
        else
           reset_timer = 0;
        
-       
+       // Comment
        if (state == Refresh_Wait)
 	       ref_timer = ref_timer + 1;
        else
 	       ref_timer = 0;
-        
+	       
+      // Comment
        if (next_state == Idle)
             DQ_dir = 1'b0;
        else if (next_state == Writing)
             DQ_dir = 1'b1; //make the DQ an input
             
+            // Comment
         if (state == Strobe_Wait)
             Wait = Wait + 1;
         else 
             Wait = 0;
         
-           
+              // Comment
         if (state == Strobe)
             Strobe_num = Strobe_num + 1;
         else
             Strobe_num = 0;
             
+            
+              // Comment    
         if (state == Bank_Active)
             activate_timer = activate_timer + 1;
         else
@@ -258,6 +246,7 @@ parameter Power_On = 5'd0,
                 next_state = Idle;
             end
             
+            // Idle state is where we stay after powerup unless we Write, Read, or Refresh
             Idle: begin
                 if (MRS && !(REF))
                     next_state = Write_Leveling;
@@ -267,22 +256,22 @@ parameter Power_On = 5'd0,
                     next_state = Activating;
                 else
                     next_state = Idle;
-
-                    
             end
             
-            Write_Leveling: begin
-                next_state = Idle;
-            end
+//            Write_Leveling: begin
+//                next_state = Idle;
+//            end
             
-            Self_Refresh: begin
-                // Hmm, this one needs to work without the clock running
-            end
+//            Self_Refresh: begin
+//                // Hmm, this one needs to work without the clock running
+//            end
             
             Refreshing: begin
                 next_state = Refresh_Wait;
             end
             
+            
+            // Comment on refresh state logic
             Refresh_Wait: begin
                 if (ref_timer < (tRFC - 1)) begin
                     next_state = Refresh_Wait;
@@ -294,9 +283,9 @@ parameter Power_On = 5'd0,
             end
             
             
-            Precharge_Power_Down: begin
-                // Hmm, this one needs to work without the clock running
-            end
+//            Precharge_Power_Down: begin
+//                // Hmm, this one needs to work without the clock running
+//            end
             
             Activating: begin
                 next_state = Bank_Active;
@@ -325,9 +314,9 @@ parameter Power_On = 5'd0,
                     next_state = Precharging;
             end
             
-            Active_Power_Down: begin
-                // Must work without clock
-            end
+//            Active_Power_Down: begin
+//                // Must work without clock
+//            end
             
             Writing: begin
 //                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
@@ -344,9 +333,9 @@ parameter Power_On = 5'd0,
                 next_state = Strobe_Wait;
             end
             
-            WritingAP: begin
-                next_state = Precharging;
-            end
+//            WritingAP: begin
+//                next_state = Precharging;
+//            end
             
             Reading: begin
 //                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
@@ -363,9 +352,9 @@ parameter Power_On = 5'd0,
                 next_state = Strobe_Wait;
             end
             
-            ReadingAP: begin
-                next_state = Precharging;
-            end
+//            ReadingAP: begin
+//                next_state = Precharging;
+//            end
             
              Strobe_Wait: begin
                 if (Wait >= RW_latency -1)
@@ -399,11 +388,11 @@ parameter Power_On = 5'd0,
             end
             
             Reset_Procedure: begin
-                RESET = 1'b0; //Keep RESET low for 100 ns
+                RESET_Output = 1'b0; //Keep RESET_Output low for 100 ns
             end
             
             Initialization: begin
-                RESET = 1'b1;
+                RESET_Output = 1'b1;
 
             end
             
@@ -478,13 +467,13 @@ parameter Power_On = 5'd0,
                 WE <= 1'b0;
                 Addr_out [9:0] = Addr_Column;
                 Addr_out [10] = A_10;               // 0 = no precharge
-                Addr_out [11] = Addr_Column_11;
+                Addr_out [11] = A_11;
                 Addr_out [12] = A_12;
                 Addr_out [14:13] = A13_14;
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Write lower 8 bits
                 UDM <= 1'b0;                        // Write lower 8 bits
-//                DQ_read <= 8'b00000000;
+//                Data_read <= 8'b00000000;
                 //DQ <= MCRegis;                    // 16 bit data line
 //                UDQS <= CLK;
 //                LDQS <= CLK;
@@ -501,13 +490,13 @@ parameter Power_On = 5'd0,
                 WE <= 1'b1;
                 Addr_out [9:0] = Addr_Column;
                 Addr_out [10] = A_10;               // 0 = no precharge
-                Addr_out [11] = Addr_Column_11;
+                Addr_out [11] = A_11;
                 Addr_out [12] = A_12;
                 Addr_out [14:13] = A13_14;
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
                 LDM <= 1'b0;                        // Read lower 8 bits
                 UDM <= 1'b0;                        // Read lower 8 bits
-//                DQ_read <= DQ;                    // This needs to be changed
+//                Data_read <= DQ;                    // This needs to be changed
 //                UDQS <= CLK;
 //                LDQS <= CLK;
                 RW_latency <= 4'd5;
@@ -520,12 +509,12 @@ parameter Power_On = 5'd0,
 //                WE <= 1'b1;
 //                Addr_out [9:0] = Addr_Column;
 //                Addr_out [10] = A_10;               // 1 =  precharge
-//                Addr_out [11] = Addr_Column_11;     // Part of row addres
+//                Addr_out [11] = A_11;     // Part of row addres
 //                Addr_out [12] = A_12;               // 1 = BL8 / 0 = BC4
 //                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
 //                LDM <= 1'b0;                        // Read lower 8 bits
 //                UDM <= 1'b0;                        // Read lower 8 bits
-//                //DQ_read <= DQ;                    
+//                //Data_read <= DQ;                    
                 
 //            end
             
@@ -541,10 +530,6 @@ parameter Power_On = 5'd0,
             end
            
             Strobe: begin
-//                LDQS = diff_input_clk;
-//                LDQS_n = diff_input_clk_neg;
-//                UDQS = diff_input_clk;
-//                UDQS_n = diff_input_clk_neg;
                   if (write_select) begin
                       if (Strobe_num <= 5)
                         strobe_input = CLK;
@@ -565,7 +550,7 @@ parameter Power_On = 5'd0,
                 CAS <= 1'b1;
                 WE <= 1'b0;
                 Addr_out [10] = A_10;               // 1 =  one bank / 0 = all banks
-                Addr_out [11] = Addr_Column_11;     // Does not matter
+                Addr_out [11] = A_11;     // Does not matter
                 Addr_out [12] = A_12;               // Does not matter
                 BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0 / Does not matter IF A_10 == 0
                 LDM <= 1'b1;                        // Ignore lower 8 bits
@@ -573,7 +558,7 @@ parameter Power_On = 5'd0,
                 
                 //For showcasing
 //                Addr_out [9:0] = 10'bx;
-//                DQ_read = 16'bx;
+//                Data_read = 16'bx;
                 
                 precharge_timer = 0;
             end
@@ -584,7 +569,7 @@ parameter Power_On = 5'd0,
     end
     
     // Tri-state buffer to control my_bus
-    assign DQ[7:0] = (DQ_dir) ? Data_input : 8'bz;
+    assign DQ[7:0] = (DQ_dir) ? Data_Write : 8'bz;
     
     
    
@@ -593,28 +578,28 @@ parameter Power_On = 5'd0,
              DQ_read_bit = DQ_read_bit + 1;
              case(DQ_read_bit)
                 1: begin
-                    DQ_read[0] <= DQ[0];
+                    Data_read[0] <= DQ[0];
                 end
                 2: begin
-                    DQ_read[1] <= DQ[1];
+                    Data_read[1] <= DQ[1];
                 end
                 3: begin
-                    DQ_read[2] <= DQ[2];
+                    Data_read[2] <= DQ[2];
                 end
                 4: begin
-                    DQ_read[3] <= DQ[3];
+                    Data_read[3] <= DQ[3];
                 end
                 5: begin
-                    DQ_read[4] <= DQ[4];
+                    Data_read[4] <= DQ[4];
                 end
                 6: begin
-                    DQ_read[5] <= DQ[5];
+                    Data_read[5] <= DQ[5];
                 end
                 7: begin
-                    DQ_read[6] <= DQ[6];
+                    Data_read[6] <= DQ[6];
                 end
                 8: begin
-                    DQ_read[7] <= DQ[7];
+                    Data_read[7] <= DQ[7];
                 end
                 default: begin
                     DQ_read_bit = 0;
@@ -635,6 +620,30 @@ parameter Power_On = 5'd0,
 endmodule
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//--- I don't think we're using this phase shifted clock clk_out or clk_shifted but we're actually using clk_90? ---
+
+
+
+
+
 module phase_shifted_clock (
     input  wire clk_in,   // Input clock (e.g., 100 MHz)
     input  wire rst,      // Reset
@@ -646,7 +655,7 @@ module phase_shifted_clock (
     wire clk_shifted;  // 90-degree phase-shifted clock
     wire locked;       // MMCM lock signal
 
-    // MMCM instantiation for Kintex-7
+    // Create MMCM phase-shifted clock by 90 degrees. This allows reading DQS between rising and falling edges of clk_in
     MMCME2_BASE #(
         .CLKIN1_PERIOD(10.0),    // Adjust this to match your input clock period (100 MHz = 10.0 ns)
         .CLKFBOUT_MULT_F(10.0),  // Multiply input clock by 10
@@ -661,7 +670,7 @@ module phase_shifted_clock (
         .RST(rst)           // Reset input
     );
 
-    // Register update at phase-shifted clock
+    // Testig phase-shifted clock
     always @(posedge clk_shifted or posedge rst) begin
         if (rst)
             reg_value <= 0;
