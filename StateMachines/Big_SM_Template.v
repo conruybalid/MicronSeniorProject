@@ -25,7 +25,7 @@
 // DQ is an exception. It is inout as we both Write and Read data from the same pins
 module Big_SM_Template(
     input wire CLK,                  // 200 Mhz / 200 ns
-    input wire Reset_input,           // Reset command, issued by pressing top button
+    input wire Reset_input,          // Reset command, issued by pressing top button
     input wire ZQCL,                 // ZQ Calibration - Set high
     input wire MRS,                  // Mode Registers - Set low
     input wire REF,                  // Refresh - Every 64 ms
@@ -52,7 +52,7 @@ module Big_SM_Template(
     output reg RAS,                  // Active Low - Row Address Strobe - Used to select state - Active in Refresh / Precharge / Activate
     output reg CAS,                  // Active Low - Column Address Strobe  - Used to select state - Active in Refresh / Write / Read
     output reg WE,                   // Active Low - Write Enable - Used to select state - Active in Precharge / Write
-    output reg RESET_Output,                // Reset (Reset command to DRAM Reset pin)
+    output reg RESET_Output,         // Reset (Reset command to DRAM Reset pin)
     output reg [14:0] Addr_out,      // Row or Column address depending on state
     output reg [2:0] BA_out,         // Bank address
     output reg LDM,                  // Write - Lower 8 bit data mask - Write = 0 / Ignore (mask) data = 1
@@ -65,32 +65,38 @@ module Big_SM_Template(
    
     reg [5:0] next_state;            // Used to select states in state machine
     
-    reg [31:0] ref_timer;            // Refresh timer - Used to have refresh occurr every 64 ms
-    reg [31:0] precharge_timer;
-    reg [31:0] activate_timer;
-    reg [31:0] reset_timer;
+    reg [31:0] tRFC_timer;            // Refresh timer - Used to wait tRFC after refresh command before any other action
+    reg [31:0] precharge_timer;      // (not used right now) This keeps track of the last time we did a precharge. 
+                                     // tRP - minimum time between precharge and next activate
+    reg [31:0] activate_timer;       // time between activate and read/write command.
+                                    // tRCD - row to column delay
+    reg [31:0] reset_timer;         // timer used for holding RESET pin low for 100 ns
+                                    // tRST = reset hold time
     reg [15:0] last_row_accessed;    // Not currently being used
-    reg [3:0] Wait;                  // Used for Strobing DQS
-    reg [3:0] Strobe_num;            // Used for Strobing DQS
-    
+    reg [3:0] RL_WL_count;          // Used for Strobing DQS - wait RL or WL
+                                    // RL/WL = read/write latency
+    reg [3:0] Strobe_count;         // Used for Strobing DQS - counting how many strobes we've done
+                                    // 5 strobes are needed for a write
+                                    // tBURST
     
     reg DQ_dir;                      // DQ Direction - Chooses whether DQ line is Writing or Reading
     
-    parameter IDLE = 2'b00, REFRESH = 2'b01, REF_WAIT = 2'b10;
-    parameter tRFC = 32'd103; // Example refresh cycle time (103)
-    parameter tRCD= 32'd10;
-    parameter RL = 4'd5, WL = 4'd7;
+    
+    parameter tRFC = 32'd103; // Refresh Cycle Time (103)
+    parameter tRCD= 32'd10; // Row to Column Delay
+    parameter RL = 4'd5, WL = 4'd7; //Read Latency and Write Latency
+                                    // to be used with RL_WL_count
     
     
     
-    reg [3:0] RW_latency;            // Used for Strobing DQS - Read Write Latency
-    reg write_select;                // Used for Strobing DQS - Select Write strobe route
-    reg read_select;                 // Used for Strobing DQS - Select Read strobe route
+    reg [3:0] RL_WL_MAXVALUE;            // Used for Strobing DQS - Read Write Latency - get assigned RL or WL
+    reg write_select;                // Select Write SM route - Gets set by WRITE command. Holds until back to idle
+    reg read_select;                 // Select Read SM route - Gets set by READ command. Holds until back to idle
     
-    reg read_strobe;                 // Used for strobing
-    reg [3:0] DQ_read_bit;           // Used for strobing
+    reg read_DQS_from_DRAM;                 // Used for strobing
+    reg [3:0] DQ_read_bitline;           // which DQ line are we reading
     
-    reg strobe_input;                // Used for strobing
+    reg write_DQS_to_DRAM;                // Used for strobing
     
     // Assign decimal values different states
 parameter Power_On = 5'd0,
@@ -122,13 +128,13 @@ parameter Power_On = 5'd0,
     OBUFDS clkout_LDQS (
         .O(LDQS),                           // Differential output positive
         .OB(LDQS_n),                        // Differential output negative
-        .I(strobe_input)                    // Single-ended input clock
+        .I(write_DQS_to_DRAM)                    // Single-ended input clock
     );
     
 //    OBUFDS clkout_UDQS (
 //        .O(UDQS),   // Differential output positive
 //        .OB(UDQS_n),  // Differential output negative
-//        .I(strobe_input)         // Single-ended input clock
+//        .I(write_DQS_to_DRAM)         // Single-ended input clock
 //    );
     
     // Assign names to states, useful for simulation
@@ -164,8 +170,7 @@ parameter Power_On = 5'd0,
         WE = 1'b1;
         DQ_dir = 1'b0;
         RESET_Output = 1'b1;
-        DQ_read_bit = 4'd0;
-        //read_strobe = 1'b1;
+        DQ_read_bitline = 4'd0;
     end
      
      
@@ -173,21 +178,24 @@ parameter Power_On = 5'd0,
     // Add something about what this always block does, then comments bove each if statement
     always @(posedge CLK) begin
         
-        //Timer
+        //(not currently used) Precharge_Timer that keeps track of the last time we were in the precharge state
+        // May need to wait to read or write after precharge
         if (precharge_timer != 32'hFFFFFFFF) 
             precharge_timer = precharge_timer + 1;
         
-       //Transition changes
+       //Mealy Actions
+       
+       //Increment reset timer - wait 100 ns with reset pin low
        if (state == Reset_Procedure)
           reset_timer = reset_timer + 1;
        else
           reset_timer = 0;
        
-       // Comment
+       // Increment refresh wait timer - wait tRFC
        if (state == Refresh_Wait)
-	       ref_timer = ref_timer + 1;
+	       tRFC_timer = tRFC_timer + 1;
        else
-	       ref_timer = 0;
+	       tRFC_timer = 0;
 	       
       // Comment
        if (next_state == Idle)
@@ -197,15 +205,15 @@ parameter Power_On = 5'd0,
             
             // Comment
         if (state == Strobe_Wait)
-            Wait = Wait + 1;
+            RL_WL_count = RL_WL_count + 1;
         else 
-            Wait = 0;
+            RL_WL_count = 0;
         
               // Comment
         if (state == Strobe)
-            Strobe_num = Strobe_num + 1;
+            Strobe_count = Strobe_count + 1;
         else
-            Strobe_num = 0;
+            Strobe_count = 0;
             
             
               // Comment    
@@ -254,6 +262,8 @@ parameter Power_On = 5'd0,
                     next_state = Refreshing;
                 else if (( read_select || write_select) && !(MRS || REF))
                     next_state = Activating;
+                else if (Reset_input)
+                    next_state = Reset_Procedure;
                 else
                     next_state = Idle;
             end
@@ -271,13 +281,13 @@ parameter Power_On = 5'd0,
             end
             
             
-            // Comment on refresh state logic
+            // refresh wait next_state logic
             Refresh_Wait: begin
-                if (ref_timer < (tRFC - 1)) begin
+                if (tRFC_timer < (tRFC - 1)) begin //If not waited tRFC, continue waiting
                     next_state = Refresh_Wait;
-                end else if (REF)
+                end else if (REF) // If tRFC is reached and REF signal is still active, refresh again (back to back refresh)
                     next_state = Refreshing;
-                else
+                else //tRFC is reached and REF signal is low, go back to idle
                     next_state = Idle;
                                      
             end
@@ -292,18 +302,6 @@ parameter Power_On = 5'd0,
             end
             
             Bank_Active: begin
-//                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
-//                    next_state = Writing;
-//                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
-//                    next_state = WritingAP;
-//                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
-//                    next_state = Reading;
-//                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
-//                    next_state = ReadingAP;
-//                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
-//                    next_state = Precharging;
-//                else
-//                    next_state = Bank_Active;
                   if (activate_timer < tRCD)
                     next_state = Bank_Active;
                   else if (write_select)
@@ -319,17 +317,6 @@ parameter Power_On = 5'd0,
 //            end
             
             Writing: begin
-//                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
-//                    next_state = Writing;
-//                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
-//                    next_state = WritingAP;
-//                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
-//                    next_state = Reading;
-//                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
-//                    next_state = ReadingAP;
-//                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
-//                    next_state = Precharging;
-//                else
                 next_state = Strobe_Wait;
             end
             
@@ -338,17 +325,6 @@ parameter Power_On = 5'd0,
 //            end
             
             Reading: begin
-//                if (WRITE && !(WRITE_AP || READ || READ_AP || PRE))
-//                    next_state = Writing;
-//                else if (WRITE_AP && !(WRITE || READ || READ_AP || PRE))
-//                    next_state = WritingAP;
-//                else if (READ && !(WRITE || WRITE_AP || READ_AP || PRE))
-//                    next_state = Reading;
-//                else if (READ_AP && !(WRITE || WRITE_AP || READ || PRE))
-//                    next_state = ReadingAP;
-//                else if (PRE && !(WRITE || WRITE_AP || READ || READ_AP))
-//                    next_state = Precharging;
-//                else
                 next_state = Strobe_Wait;
             end
             
@@ -357,14 +333,14 @@ parameter Power_On = 5'd0,
 //            end
             
              Strobe_Wait: begin
-                if (Wait >= RW_latency -1)
+                if (RL_WL_count >= RL_WL_MAXVALUE -1)
                     next_state = Strobe;
                 else
                     next_state = Strobe_Wait;
             end
            
             Strobe: begin
-                if (Strobe_num == 9)
+                if (Strobe_count == 9)
                     next_state = Precharging;
                 else
                     next_state = Strobe;
@@ -405,7 +381,7 @@ parameter Power_On = 5'd0,
                 CAS = 1'b1;
                 WE = 1'b1;
                 BA_out = 3'bx;
-                strobe_input = 1'bx;
+                write_DQS_to_DRAM = 1'bx;
  	
 //                LDQS = 1'bx;
 //                UDQS = 1'bx;	
@@ -477,7 +453,7 @@ parameter Power_On = 5'd0,
                 //DQ <= MCRegis;                    // 16 bit data line
 //                UDQS <= CLK;
 //                LDQS <= CLK;
-                RW_latency <= 4'd7;
+                RL_WL_MAXVALUE <= 4'd7;
             end
             
             WritingAP: begin
@@ -499,7 +475,7 @@ parameter Power_On = 5'd0,
 //                Data_read <= DQ;                    // This needs to be changed
 //                UDQS <= CLK;
 //                LDQS <= CLK;
-                RW_latency <= 4'd5;
+                RL_WL_MAXVALUE <= 4'd5;
             end
             
 //           ReadingAP: begin
@@ -524,23 +500,23 @@ parameter Power_On = 5'd0,
 //                CAS = 1'b1;     // all the address stuff for NOP command are V in the document
 //                WE = 1'b1;
                
-                if (Wait == RW_latency -1 && write_select) begin   // this is for one period of the clock the DQS is held low has to do with tRPRE
-                    strobe_input = 0;
+                if (RL_WL_count == RL_WL_MAXVALUE -1 && write_select) begin   // this is for one period of the clock the DQS is held low has to do with tRPRE
+                    write_DQS_to_DRAM = 0;
                 end
             end
            
             Strobe: begin
                   if (write_select) begin
-                      if (Strobe_num <= 5)
-                        strobe_input = CLK;
+                      if (Strobe_count <= 5)
+                        write_DQS_to_DRAM = CLK;
                       else
-                        strobe_input = 1'b0;
+                        write_DQS_to_DRAM = 1'b0;
                   end
                   else if (read_select) begin
-                      if (Strobe_num <= 3)
-                        read_strobe = 1'b1;
+                      if (Strobe_count <= 3)
+                        read_DQS_from_DRAM = 1'b1;
                       else
-                        read_strobe = 1'b0;
+                        read_DQS_from_DRAM = 1'b0;
                   end
             end
             
@@ -572,11 +548,12 @@ parameter Power_On = 5'd0,
     assign DQ[7:0] = (DQ_dir) ? Data_Write : 8'bz;
     
     
-   
+   // READING based off the strobe
+   // if read_DQS_from_DRAM is high, start collecting data from DQ line
     always @(clk_90) begin
-        if (read_strobe) begin
-             DQ_read_bit = DQ_read_bit + 1;
-             case(DQ_read_bit)
+        if (read_DQS_from_DRAM) begin
+             DQ_read_bitline = DQ_read_bitline + 1;
+             case(DQ_read_bitline)
                 1: begin
                     Data_read[0] <= DQ[0];
                 end
@@ -602,12 +579,12 @@ parameter Power_On = 5'd0,
                     Data_read[7] <= DQ[7];
                 end
                 default: begin
-                    DQ_read_bit = 0;
+                    DQ_read_bitline = 0;
                 end          
              endcase
         end
         else
-            DQ_read_bit = 0;
+            DQ_read_bitline = 0;
                 
     end
      
@@ -647,8 +624,7 @@ endmodule
 module phase_shifted_clock (
     input  wire clk_in,   // Input clock (e.g., 100 MHz)
     input  wire rst,      // Reset
-    output wire clk_out,  // Phase-shifted clock output
-    output reg  reg_value // Example register updating at clk_shifted
+    output wire clk_out  // Phase-shifted clock output
 );
 
     wire clk_fb;       // Feedback clock for MMCM
@@ -670,13 +646,6 @@ module phase_shifted_clock (
         .RST(rst)           // Reset input
     );
 
-    // Testig phase-shifted clock
-    always @(posedge clk_shifted or posedge rst) begin
-        if (rst)
-            reg_value <= 0;
-        else
-            reg_value <= ~reg_value; // Example toggle
-    end
 
     assign clk_out = clk_shifted; // Output the shifted clock
 

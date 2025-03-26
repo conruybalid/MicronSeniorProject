@@ -40,11 +40,14 @@ module BigSM_TB();
   
   wire [15:0] DQ_line;
   
-
+  wire reset_pin;
+  
+  
   // Instantiate the Unit Under Test (UUT)
   Big_SM_Template uut (
     .CLK(CLK), 
-    .RESET(RESET), 
+    .Reset_input(RESET),
+    .RESET_Output(reset_pin), 
     .ZQCL(ZQCL), 
     .MRS(MRS), 
     // States
@@ -54,8 +57,8 @@ module BigSM_TB();
     .ACT(ACT), 
     .WRITE(WRITE), 
     .READ(READ), 
-    .WRITE_AP(WRITE_AP), 
-    .READ_AP(READ_AP), 
+//    .WRITE_AP(WRITE_AP), 
+//    .READ_AP(READ_AP), 
     .PRE(PRE), 
     // Commands
     .CS(CS), 
@@ -69,12 +72,12 @@ module BigSM_TB();
     .Addr_Row(Addr_Row),
     // Column Addresses
     .Addr_Column(Addr_Column), // [9:0]
-    .Addr_Column_11(Addr_Column_11),
+    .A_11(Addr_Column_11),
     .Addr_out(Addr_out),
     .A_10(A_10),
     .A_12(A_12),
-    .DQ_read(DQ_out),
-    .Data_input(16'b1111000000000000),
+    .Data_read(DQ_out),
+    .Data_Write(16'b1111000000010101),
     .DQ(DQ_line),
     
     // Extra outputs
@@ -91,7 +94,7 @@ module BigSM_TB();
     // Initialize Inputs
     CLK    = 0;
     RESET  = 0;
-    ZQCL   = 0;
+    ZQCL   = 1;
     MRS    = 0;
     SRE    = 0;
     SRX    = 0;
@@ -131,7 +134,7 @@ module BigSM_TB();
     
     // Stimulus sequence
     #20 ZQCL = 1; // State: Initialization (2) -> ZQ_Calibration (3)
-    #20 ZQCL = 0; // State: ZQ_Calibration (3) -> Idle (4)
+    
     #20 MRS = 1;  // State: Idle (4) -> Write_Leveling (5)
     #20 MRS = 0;  // State: Write_Leveling (5) -> Idle (4)
     #20 REF = 1;
