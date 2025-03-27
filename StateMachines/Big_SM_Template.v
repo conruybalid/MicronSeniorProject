@@ -24,7 +24,7 @@
 // Outputs leave this state machine, pass through our Outer Source, and are then inputs to the DRAM and LEDs
 // DQ is an exception. It is inout as we both Write and Read data from the same pins
 module Big_SM_Template(
-    input wire CLK,                  // 200 Mhz / 200 ns
+    input wire CLK,                  // 320 MHz / 3.1 ns
     input wire Reset_input,          // Reset command, issued by pressing top button
     input wire ZQCL,                 // ZQ Calibration - Set high
     input wire MRS,                  // Mode Registers - Set low
@@ -82,9 +82,10 @@ module Big_SM_Template(
     reg DQ_dir;                      // DQ Direction - Chooses whether DQ line is Writing or Reading
     
     
-    parameter tRFC = 32'd103; // Refresh Cycle Time (103)
-    parameter tRCD= 32'd10; // Row to Column Delay
-    parameter RL = 4'd5, WL = 4'd7; //Read Latency and Write Latency
+    parameter tRFC = 32'd90;       // Refresh Cycle Time (90) min of 280 ns at 3.1 ns per period
+    parameter tRCD= 32'd5;         // Row to Column Delay 15+ ns at 3.1 ns per period
+    parameter RL = 4'd5;            // Read Latency = Additive Latency (AL, which is 0 based on timing diagrams) + CAS Latency (CL)
+    parameter WL = 4'd5;            //Write Latency = Additive Latency (AL, which is 0 based on timing diagrams) + CAS Write Latency (CWL)
                                     // to be used with RL_WL_count
     
     

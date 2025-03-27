@@ -23,8 +23,8 @@
 module OuterSource(
     // Inputs - From development board / FPGA to memory controller code
     
-    input wire sysclk_p,                // Differential positive signal from development board - 200MHz (20ns)
-    input wire sysclk_n,                // Differential negative signal from development board - 200MHz (20ns)
+    input wire sysclk_p,                // Differential positive signal from development board - 200MHz (5ns)
+    input wire sysclk_n,                // Differential negative signal from development board - 200MHz (5ns)
     input wire RESET_SM_button,         // Reset state machine command, issued by pressing top button
     input wire btnl,                    // Write command, issued by pressing left button
     input wire btnr,                    // Read command, issued by pressing left button
@@ -51,8 +51,8 @@ module OuterSource(
     output wire UDM,                    // Write - Uppder 8 bit data mask - Write = 0 / Ignore (mask) data = 1
     output wire [7:0] led,              // To read data from DRAM, on = 1 | off = 0
     
-    output wire CK,                     // Differential clock positive edge, supplies clk for DRAM (200MHz, 20ns)
-    output wire CK_n,                   // Differential clock negative edge, supplies clk for DRAM (200MHz, 20ns)
+    output wire CK,                     // Differential clock positive edge, supplies clk for DRAM (320 MHz, 3.1ns)
+    output wire CK_n,                   // Differential clock negative edge, supplies clk for DRAM (320 MHz, 3.1ns)
     output wire CKE                     // Clock Enable - Should be set high for most states
     
     );    
@@ -66,12 +66,15 @@ module OuterSource(
 //    assign led[0] = (state_out == 5'd4) ? 1'b1 : 1'b0;
   
     // Create clk for state machine to use from differential sysclk inputs   
-    wire clk; 
-    IBUFGDS clk_inst (
-        .O(clk),                        // Single-ended output clock
-        .I(sysclk_p),                   // Differential input positive
-        .IB(sysclk_n)                   // Differential input negative
-    );
+    wire clk; // (320 MHz, 3.1ns)
+
+    clock_generator create_31ns_clk(
+    .clk_200_p(sysclk_p),   // Differential clock input (positive)
+    .clk_200_n(sysclk_n),   // Differential clock input (negative)
+    .rst(0),         // Reset input
+    .clk_320(clk),     // Generated 320 MHz clock
+    .locked()       // MMCM locked status
+);
     
     // Create Differential CK and CK_n from clk. These are outputted directly to the DRAM, not used in the Big_SM_Template SM
      OBUFDS clkout_inst (
@@ -110,7 +113,7 @@ module OuterSource(
         .UDQS_n(UDQS_n),                // Differential pair to UDQ
         
         // Outputs
-        .Data_Read(led[7:0]),           // Read - 1 byte from DQ is read to this reg. It is then outputted to our LEDs
+        .Data_read(led[7:0]),           // Read - 1 byte from DQ is read to this reg. It is then outputted to our LEDs
         .CS(CS),                        // Active Low - Chip select - Used to select state - Almost always active
         .RAS(RAS),                      // Active Low - Row Address Strobe - Used to select state - Active in Refresh / Precharge / Activate
         .CAS(CAS),                      // Active Low - Column Address Strobe  - Used to select state - Active in Refresh / Write / Read
@@ -126,8 +129,8 @@ module OuterSource(
     
     // Refresh Logic
     
-    localparam integer Refresh_Value = 32'd6400000;  // Every time Refresh_clock reaches this value - Refresh all banks (Every 64 ms based on 200MHz)
-    localparam integer Reset_Counter = 32'd6400020;  // Every time Refresh_clock reaches this value - Reset the Refresh_clock to 0
+    localparam integer Refresh_Value = 32'd20645161;  // Every time Refresh_clock reaches this value - Refresh all banks (Every 64 ms based on 320MHz)
+    localparam integer Reset_Counter = 32'd20645211;  // Every time Refresh_clock reaches this value - Reset the Refresh_clock to 0
     
     reg [31:0] Refresh_clock = 0;                    // Counts between 0 and Refresh_Value to refresh DRAM every 64 ms
     
@@ -151,4 +154,59 @@ module OuterSource(
     
 endmodule
 
-// sdfds
+
+
+// MMCM Source - Chatgpt
+module clock_generator(
+    input  wire clk_200_p,   // Differential clock input (positive) from the source
+    input  wire clk_200_n,   // Differential clock input (negative) from the source
+    input  wire rst,         // Reset input to the MMCM and system
+    output wire clk_320,     // Generated clock output at 320 MHz
+    output wire locked       // Lock status output, indicates whether the MMCM has locked
+);
+
+// Internal signals
+wire clk_200_ibuf;    // Internal wire to hold the single-ended version of the input clock
+wire clk_mmcm_fb;     // Feedback clock used by MMCM to maintain phase lock
+wire clk_mmcm_out;    // The output clock from the MMCM
+wire locked_int;      // Internal version of the locked signal
+
+// Convert differential input clock to single-ended using IBUFDS (Input Buffer)
+IBUFDS #(
+    .DIFF_TERM("TRUE"),   // Enable internal termination for differential inputs
+    .IBUF_LOW_PWR("TRUE"), // Use low-power I/O buffer
+    .IOSTANDARD("DEFAULT") // Default I/O standard
+) IBUFDS_inst (
+    .O(clk_200_ibuf),   // Single-ended output for clock input
+    .I(clk_200_p),       // Positive differential input
+    .IB(clk_200_n)       // Negative differential input
+);
+
+// MMCM Instantiation to generate the 320 MHz clock
+MMCME2_ADV #(
+    .BANDWIDTH("OPTIMIZED"),   // Set the MMCM to optimized performance for better accuracy
+    .CLKFBOUT_MULT_F(8.0),      // Multiply the input clock by 8 (M = 8), resulting in a VCO frequency of 320 MHz
+    .CLKIN1_PERIOD(5.0),        // Input clock period is 5 ns (200 MHz), 1 / 200 MHz = 5 ns
+    .DIVCLK_DIVIDE(5),          // Divide the VCO output by 5 (D = 5) to get the desired output frequency
+    .CLKOUT0_DIVIDE_F(1.0),     // Divide the output clock by 1 (O = 1) to keep the output frequency at 320 MHz
+    .STARTUP_WAIT("FALSE")      // Disable the startup wait to speed up the locking process
+) mmcm_inst (
+    .CLKIN1(clk_200_ibuf),     // The single-ended input clock to the MMCM
+    .CLKFBIN(clk_mmcm_fb),     // Feedback clock from the MMCM output, used to phase lock the MMCM
+    .CLKFBOUT(clk_mmcm_fb),    // Feedback clock output, sent back to CLKFBIN to maintain phase alignment
+    .CLKOUT0(clk_mmcm_out),    // Output clock from the MMCM (320 MHz in this case)
+    .LOCKED(locked_int),       // Internal locked signal indicating if MMCM has stabilized
+    .PWRDWN(1'b0),             // Power down signal, set to 0 (disabled)
+    .RST(rst)                  // Reset signal to reset the MMCM
+);
+
+// Buffer the MMCM output clock to drive the final output
+BUFG clkout_buf (
+    .O(clk_320),        // The 320 MHz output clock
+    .I(clk_mmcm_out)    // The internal MMCM output clock
+);
+
+// Assign the locked signal to the external wire to indicate if the MMCM is locked
+assign locked = locked_int; // Output the internal locked signal as the final locked status
+
+endmodule
