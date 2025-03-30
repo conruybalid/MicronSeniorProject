@@ -88,7 +88,7 @@ module BigSM_TB();
   );
 
   // Clock generation
-  always #5 CLK = ~CLK;
+  always #1.55 CLK = ~CLK;
   
   initial begin
     // Initialize Inputs
@@ -139,7 +139,7 @@ module BigSM_TB();
     #20 MRS = 0;  // State: Write_Leveling (5) -> Idle (4)
     #20 REF = 1;
     #20 REF = 0;
-    #150 WRITE = 1; 
+    #250 WRITE = 1; 
     #50 REF = 1;
     #20 REF = 0;
     WRITE = 0;

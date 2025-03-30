@@ -75,9 +75,11 @@ module Big_SM_Template(
     reg [15:0] last_row_accessed;    // Not currently being used
     reg [3:0] RL_WL_count;          // Used for Strobing DQS - wait RL or WL
                                     // RL/WL = read/write latency
-    reg [3:0] Strobe_count;         // Used for Strobing DQS - counting how many strobes we've done
+    reg [3:0] Strobe_count;         // Used for Strobing DQS - counting how many clock cycles we have been in the strobe state
                                     // 5 strobes are needed for a write
+    parameter tWR = 32'd5;           // wait tWR (write recovery) after before precharging
                                     // tBURST
+     
     
     reg DQ_dir;                      // DQ Direction - Chooses whether DQ line is Writing or Reading
     
@@ -238,7 +240,7 @@ parameter Power_On = 5'd0,
             end
             
             Reset_Procedure: begin
-                if (reset_timer < 32'd10)
+                if (reset_timer < 32'd33) // Hold RESET pin for 100 ns (3.1 ns * 33 = 102.3)   
                     next_state = Reset_Procedure;
                 else
                     next_state = Initialization;
@@ -313,26 +315,14 @@ parameter Power_On = 5'd0,
                     next_state = Precharging;
             end
             
-//            Active_Power_Down: begin
-//                // Must work without clock
-//            end
-            
             Writing: begin
                 next_state = Strobe_Wait;
             end
-            
-//            WritingAP: begin
-//                next_state = Precharging;
-//            end
-            
+             
             Reading: begin
                 next_state = Strobe_Wait;
             end
-            
-//            ReadingAP: begin
-//                next_state = Precharging;
-//            end
-            
+             
              Strobe_Wait: begin
                 if (RL_WL_count >= RL_WL_MAXVALUE -1)
                     next_state = Strobe;
@@ -341,7 +331,7 @@ parameter Power_On = 5'd0,
             end
            
             Strobe: begin
-                if (Strobe_count == 9)
+                if (Strobe_count == 32'd4 + tWR - 1) // strobe 4 times and wait tWR after
                     next_state = Precharging;
                 else
                     next_state = Strobe;
@@ -454,7 +444,8 @@ parameter Power_On = 5'd0,
                 //DQ <= MCRegis;                    // 16 bit data line
 //                UDQS <= CLK;
 //                LDQS <= CLK;
-                RL_WL_MAXVALUE <= 4'd7;
+                RL_WL_MAXVALUE <= WL;
+                RL_WL_count = RL_WL_count + 1; 
             end
             
             WritingAP: begin
@@ -476,7 +467,8 @@ parameter Power_On = 5'd0,
 //                Data_read <= DQ;                    // This needs to be changed
 //                UDQS <= CLK;
 //                LDQS <= CLK;
-                RL_WL_MAXVALUE <= 4'd5;
+                RL_WL_MAXVALUE <= RL;
+                RL_WL_count = RL_WL_count + 1;
             end
             
 //           ReadingAP: begin
@@ -502,13 +494,15 @@ parameter Power_On = 5'd0,
 //                WE = 1'b1;
                
                 if (RL_WL_count == RL_WL_MAXVALUE -1 && write_select) begin   // this is for one period of the clock the DQS is held low has to do with tRPRE
-                    write_DQS_to_DRAM = 0;
+                                                                                // -1 because we start counting at 0
+                                                                                // -1 because RL_WL_count started counting on rising edge after write command
+                    write_DQS_to_DRAM = CLK;
                 end
             end
            
             Strobe: begin
                   if (write_select) begin
-                      if (Strobe_count <= 5)
+                      if (Strobe_count <= 4)
                         write_DQS_to_DRAM = CLK;
                       else
                         write_DQS_to_DRAM = 1'b0;

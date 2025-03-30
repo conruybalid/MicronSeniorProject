@@ -1,24 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 03/26/2025 09:09:32 PM
-// Design Name: 
-// Module Name: Outer_TB_2
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 
 module tb_OuterSource;
 
@@ -108,8 +88,9 @@ module tb_OuterSource;
         btnr = 1;                  // Simulate a read command
         #10 btnr = 0;
         
-        #200 $finish;               // End simulation after a period
+        #200;
+        $finish;               // End simulation after a period
     end
 
-    // Monitor the output values
-endmodule
+
+endmodule;
