@@ -67,14 +67,28 @@ module OuterSource(
   
     // Create clk for state machine to use from differential sysclk inputs   
     wire clk; // (320 MHz, 3.1ns)
+    wire clk_double_speed;
 
     clock_generator create_31ns_clk(
     .clk_200_p(sysclk_p),   // Differential clock input (positive)
     .clk_200_n(sysclk_n),   // Differential clock input (negative)
     .rst(0),         // Reset input
-    .clk_320(clk),     // Generated 320 MHz clock
+    .clk_640(clk_double_speed),     // Generated 320 MHz clock
     .locked()       // MMCM locked status
-);
+    );
+
+    clock_divider_by_2 divider(
+    .clk_in(clk_double_speed),
+    .rst(1'b0),
+    .clk_out(clk)
+    ); 
+
+//    IBUFDS clk_in_inst (
+//    .O(clk),       // Single-ended output clock
+//    .I(sysclk_p),        // Differential input positive
+//    .IB(sysclk_n)      // Differential input negative
+//);
+
     
     // Create Differential CK and CK_n from clk. These are outputted directly to the DRAM, not used in the Big_SM_Template SM
      OBUFDS clkout_inst (
@@ -154,6 +168,34 @@ module OuterSource(
     
 endmodule
 
+// Clock Divider written by ChatGPT
+module clock_divider_by_2(
+    input  wire clk_in,   // Input clock (640 MHz)
+    input  wire rst,      // Reset input
+    output wire clk_out   // Output clock (320 MHz)
+);
+
+// Internal signal to hold the divided clock
+reg clk_div;
+
+initial begin
+ clk_div <= 1'b1;
+end
+
+// Process to divide the clock by 2
+always @(posedge clk_in or posedge rst) begin
+    if (rst) begin
+        clk_div <= 1'b0;  // Reset the divided clock
+    end else begin
+        clk_div <= ~clk_div;  // Toggle the divided clock on each rising edge of the input clock
+    end
+end
+
+// Assign the divided clock to the output
+assign clk_out = clk_div;
+
+endmodule
+
 
 
 // MMCM Source - Chatgpt
@@ -161,7 +203,7 @@ module clock_generator(
     input  wire clk_200_p,   // Differential clock input (positive) from the source
     input  wire clk_200_n,   // Differential clock input (negative) from the source
     input  wire rst,         // Reset input to the MMCM and system
-    output wire clk_320,     // Generated clock output at 320 MHz
+    output wire clk_640,     // Generated clock output at 640 MHz
     output wire locked       // Lock status output, indicates whether the MMCM has locked
 );
 
@@ -182,19 +224,19 @@ IBUFDS #(
     .IB(clk_200_n)       // Negative differential input
 );
 
-// MMCM Instantiation to generate the 320 MHz clock
+// MMCM Instantiation to generate the 640 MHz clock
 MMCME2_ADV #(
     .BANDWIDTH("OPTIMIZED"),   // Set the MMCM to optimized performance for better accuracy
-    .CLKFBOUT_MULT_F(8.0),      // Multiply the input clock by 8 (M = 8), resulting in a VCO frequency of 320 MHz
+    .CLKFBOUT_MULT_F(16.0),     // Multiply the input clock by 16 (M = 16), resulting in a VCO frequency of 3200 MHz
     .CLKIN1_PERIOD(5.0),        // Input clock period is 5 ns (200 MHz), 1 / 200 MHz = 5 ns
     .DIVCLK_DIVIDE(5),          // Divide the VCO output by 5 (D = 5) to get the desired output frequency
-    .CLKOUT0_DIVIDE_F(1.0),     // Divide the output clock by 1 (O = 1) to keep the output frequency at 320 MHz
+    .CLKOUT0_DIVIDE_F(1.0),     // Divide the output clock by 1 (O = 1) to keep the output frequency at 640 MHz
     .STARTUP_WAIT("FALSE")      // Disable the startup wait to speed up the locking process
 ) mmcm_inst (
     .CLKIN1(clk_200_ibuf),     // The single-ended input clock to the MMCM
     .CLKFBIN(clk_mmcm_fb),     // Feedback clock from the MMCM output, used to phase lock the MMCM
     .CLKFBOUT(clk_mmcm_fb),    // Feedback clock output, sent back to CLKFBIN to maintain phase alignment
-    .CLKOUT0(clk_mmcm_out),    // Output clock from the MMCM (320 MHz in this case)
+    .CLKOUT0(clk_mmcm_out),    // Output clock from the MMCM (640 MHz in this case)
     .LOCKED(locked_int),       // Internal locked signal indicating if MMCM has stabilized
     .PWRDWN(1'b0),             // Power down signal, set to 0 (disabled)
     .RST(rst)                  // Reset signal to reset the MMCM
@@ -202,7 +244,7 @@ MMCME2_ADV #(
 
 // Buffer the MMCM output clock to drive the final output
 BUFG clkout_buf (
-    .O(clk_320),        // The 320 MHz output clock
+    .O(clk_640),        // The 640 MHz output clock
     .I(clk_mmcm_out)    // The internal MMCM output clock
 );
 
@@ -210,3 +252,4 @@ BUFG clkout_buf (
 assign locked = locked_int; // Output the internal locked signal as the final locked status
 
 endmodule
+

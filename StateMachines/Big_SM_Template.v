@@ -174,6 +174,7 @@ parameter Power_On = 5'd0,
         DQ_dir = 1'b0;
         RESET_Output = 1'b1;
         DQ_read_bitline = 4'd0;
+        
     end
      
      
@@ -207,7 +208,7 @@ parameter Power_On = 5'd0,
             DQ_dir = 1'b1; //make the DQ an input
             
             // Comment
-        if (state == Strobe_Wait)
+        if (state == Strobe_Wait || state ==  Writing || state == Reading)
             RL_WL_count = RL_WL_count + 1;
         else 
             RL_WL_count = 0;
@@ -445,7 +446,7 @@ parameter Power_On = 5'd0,
 //                UDQS <= CLK;
 //                LDQS <= CLK;
                 RL_WL_MAXVALUE <= WL;
-                RL_WL_count = RL_WL_count + 1; 
+//                RL_WL_count = RL_WL_count + 1; 
             end
             
             WritingAP: begin
@@ -468,7 +469,7 @@ parameter Power_On = 5'd0,
 //                UDQS <= CLK;
 //                LDQS <= CLK;
                 RL_WL_MAXVALUE <= RL;
-                RL_WL_count = RL_WL_count + 1;
+//                RL_WL_count = RL_WL_count + 1;
             end
             
 //           ReadingAP: begin
