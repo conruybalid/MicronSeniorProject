@@ -73,7 +73,7 @@ module OuterSource(
     .clk_200_p(sysclk_p),   // Differential clock input (positive)
     .clk_200_n(sysclk_n),   // Differential clock input (negative)
     .rst(0),         // Reset input
-    .clk_640(clk_double_speed),     // Generated 320 MHz clock
+    .clk_640(clk_double_speed),     // Generated 640 MHz clock
     .locked()       // MMCM locked status
     );
 

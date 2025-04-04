@@ -121,7 +121,8 @@ parameter Power_On = 5'd0,
           Precharging = 5'd16,
           Refresh_Wait = 5'd17,
           Strobe_Wait = 5'd18,
-          Strobe = 5'd19;
+          Strobe = 5'd19,
+          Post_Strobe = 5'd20;
 
     reg [8*20:1] state_name;                // 20-character string
     
@@ -159,6 +160,7 @@ parameter Power_On = 5'd0,
             Refresh_Wait: state_name = "Refresh_Wait";
             Strobe_Wait: state_name = "Strobe_Wait";
             Strobe: state_name = "Strobe";
+            Post_Strobe: state_name = "Post_Strobe";
             default: state_name = "Unknown";
         endcase
     end
@@ -214,7 +216,7 @@ parameter Power_On = 5'd0,
             RL_WL_count = 0;
         
               // Comment
-        if (state == Strobe)
+        if (state == Strobe || state == Post_Strobe)
             Strobe_count = Strobe_count + 1;
         else
             Strobe_count = 0;
@@ -332,10 +334,17 @@ parameter Power_On = 5'd0,
             end
            
             Strobe: begin
-                if (Strobe_count == 32'd4 + tWR - 1) // strobe 4 times and wait tWR after
-                    next_state = Precharging;
+                if (Strobe_count == 32'd4) // strobe 4 times and wait tWR after
+                    next_state = Post_Strobe;
                 else
                     next_state = Strobe;
+            end
+            
+            Post_Strobe: begin
+               if (Strobe_count == 32'd4 + tWR - 1) // strobe 4 times and wait tWR after
+                    next_state = Precharging;
+                else
+                    next_state = Post_Strobe;
             end
             
             Precharging: begin
@@ -546,43 +555,33 @@ parameter Power_On = 5'd0,
     
    // READING based off the strobe
    // if read_DQS_from_DRAM is high, start collecting data from DQ line
-    always @(clk_90) begin
-        if (read_DQS_from_DRAM) begin
-             DQ_read_bitline = DQ_read_bitline + 1;
-             case(DQ_read_bitline)
-                1: begin
-                    Data_read[0] <= DQ[0];
-                end
-                2: begin
-                    Data_read[1] <= DQ[1];
-                end
-                3: begin
-                    Data_read[2] <= DQ[2];
-                end
-                4: begin
-                    Data_read[3] <= DQ[3];
-                end
-                5: begin
-                    Data_read[4] <= DQ[4];
-                end
-                6: begin
-                    Data_read[5] <= DQ[5];
-                end
-                7: begin
-                    Data_read[6] <= DQ[6];
-                end
-                8: begin
-                    Data_read[7] <= DQ[7];
-                end
-                default: begin
-                    DQ_read_bitline = 0;
-                end          
-             endcase
-        end
+always @(posedge clk_90) begin
+    if (read_DQS_from_DRAM) begin
+        if (DQ_read_bitline < 4'd8)
+            DQ_read_bitline <= DQ_read_bitline + 1;
         else
-            DQ_read_bitline = 0;
-                
+            DQ_read_bitline <= 4'd0;
+    end else begin
+        DQ_read_bitline <= 4'd0;
     end
+end
+
+always @(posedge clk_90) begin
+    if (read_DQS_from_DRAM) begin
+        case (DQ_read_bitline)
+            0: Data_read[0] <= DQ[0];
+            1: Data_read[1] <= DQ[1];
+            2: Data_read[2] <= DQ[2];
+            3: Data_read[3] <= DQ[3];
+            4: Data_read[4] <= DQ[4];
+            5: Data_read[5] <= DQ[5];
+            6: Data_read[6] <= DQ[6];
+            7: Data_read[7] <= DQ[7];
+            default: ; // Handle unexpected values if necessary
+        endcase
+    end
+end
+
      
     phase_shifted_clock phaseShift (
         .clk_in(CLK),
