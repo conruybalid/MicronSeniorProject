@@ -47,6 +47,7 @@ module Outer_Test_Bench(
 //    wire UDQS;
     wire CKE;
     wire RESET;
+    
 
     // Instantiate the Unit Under Test (UUT)
     OuterSource uut (
@@ -76,10 +77,10 @@ module Outer_Test_Bench(
     always begin
         sysclk_p = 0;
         sysclk_n = 1;
-         #5;
+         #2.5;
         sysclk_p = 1;
         sysclk_n = 0; 
-        #5;
+        #2.5;
     end
 
     // Stimuli process
@@ -91,6 +92,7 @@ module Outer_Test_Bench(
 
         // Apply reset at the start
         #1400;
+        #500;
 
         // Test 1: Apply button presses and simulate behavior
         // Simulate button press on btnl

@@ -16,6 +16,11 @@ module tb_OuterSource;
     wire LDQS_n;                   // Differential pair to LDQS
     wire UDQS;                     // Write & Read - Upper 8-bit data strobe
     wire UDQS_n;                   // Differential pair to UDQS
+    
+    reg DQS_sim;
+    reg DQS_sim_select;
+    assign LDQS = (DQS_sim_select) ? DQS_sim : 1'bz;
+
 
     // Outputs from OuterSource
     wire CS;                       // Chip select
@@ -72,6 +77,8 @@ module tb_OuterSource;
 
     // Apply reset and stimulus to buttons and switches
     initial begin
+        DQS_sim_select = 0;
+    
         // Initialize all signals
         RESET_SM_button = 0;
         btnl = 0;

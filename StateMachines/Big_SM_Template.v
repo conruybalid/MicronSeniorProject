@@ -59,6 +59,7 @@ module Big_SM_Template(
     output reg UDM,                 // Write - Uppder 8 bit data mask - Write = 0 / Ignore (mask) data = 1
 
     output reg [5:0] state           // Output current state, currently used during testing
+    
     );
     
    wire clk_90;                      // Phase-shifted clock by 90 degrees. This allows reading DQS between rising and falling edges of clk_in
@@ -100,6 +101,8 @@ module Big_SM_Template(
     reg [3:0] DQ_read_bitline;           // which DQ line are we reading
     
     reg write_DQS_to_DRAM;                // Used for strobing
+    
+    reg [7:0] DQ_sim; //used to simulate DQ from DRAM
     
     // Assign decimal values different states
 parameter Power_On = 5'd0,
@@ -176,13 +179,14 @@ parameter Power_On = 5'd0,
         DQ_dir = 1'b0;
         RESET_Output = 1'b1;
         DQ_read_bitline = 4'd0;
+        DQ_sim[7:0] = 8'bz;
         
     end
      
      
     // Refreshing and strobng 
     // Add something about what this always block does, then comments bove each if statement
-    always @(posedge CLK) begin
+    always @(negedge clk_90) begin
         
         //(not currently used) Precharge_Timer that keeps track of the last time we were in the precharge state
         // May need to wait to read or write after precharge
@@ -227,6 +231,12 @@ parameter Power_On = 5'd0,
             activate_timer = activate_timer + 1;
         else
             activate_timer = 0;
+            
+        if (next_state == Strobe && read_select)
+            DQ_sim [7:0] <= 8'b11001100;
+        else
+            DQ_sim [7:0] <= 8'bz;
+
         
 	   state <= next_state;
 
@@ -243,7 +253,7 @@ parameter Power_On = 5'd0,
             end
             
             Reset_Procedure: begin
-                if (reset_timer < 32'd33) // Hold RESET pin for 100 ns (3.1 ns * 33 = 102.3)   
+                if (reset_timer < 32'd17) // Hold RESET pin for 100 ns (3.1 ns * 33 = 102.3)   
                     next_state = Reset_Procedure;
                 else
                     next_state = Initialization;
@@ -382,7 +392,7 @@ parameter Power_On = 5'd0,
                 CAS = 1'b1;
                 WE = 1'b1;
                 BA_out = 3'bx;
-                write_DQS_to_DRAM = 1'bx;
+                write_DQS_to_DRAM = 1'bz;
  	
 //                LDQS = 1'bx;
 //                UDQS = 1'bx;	
@@ -403,6 +413,9 @@ parameter Power_On = 5'd0,
                 RAS = 1'b0;
                 CAS = 1'b0;
                 WE = 1'b1;
+                Addr_out [10] = A_10;               // 0 = One Bank
+                BA_out <= BA_in;                    // 3 bit hex value, start at 3'h0
+
             end
             
             Refresh_Wait: begin
@@ -511,17 +524,15 @@ parameter Power_On = 5'd0,
             end
            
             Strobe: begin
-                  if (write_select) begin
+                  if (write_select || read_select) begin
                       if (Strobe_count <= 4)
                         write_DQS_to_DRAM = CLK;
                       else
                         write_DQS_to_DRAM = 1'b0;
                   end
-                  else if (read_select) begin
-                      if (Strobe_count <= 3)
-                        read_DQS_from_DRAM = 1'b1;
-                      else
-                        read_DQS_from_DRAM = 1'b0;
+                  if (read_select) begin
+                      if (Strobe_count == 1)
+                        Data_read <= DQ;
                   end
             end
             
@@ -550,12 +561,12 @@ parameter Power_On = 5'd0,
     end
     
     // Tri-state buffer to control my_bus
-    assign DQ[7:0] = (DQ_dir) ? Data_Write : 8'bz;
+    assign DQ[7:0] = (DQ_dir) ? Data_Write : DQ_sim;
     
     
    // READING based off the strobe
    // if read_DQS_from_DRAM is high, start collecting data from DQ line
-always @(posedge clk_90) begin
+always @(clk_90) begin
     if (read_DQS_from_DRAM) begin
         if (DQ_read_bitline < 4'd8)
             DQ_read_bitline <= DQ_read_bitline + 1;
@@ -566,21 +577,21 @@ always @(posedge clk_90) begin
     end
 end
 
-always @(posedge clk_90) begin
-    if (read_DQS_from_DRAM) begin
-        case (DQ_read_bitline)
-            0: Data_read[0] <= DQ[0];
-            1: Data_read[1] <= DQ[1];
-            2: Data_read[2] <= DQ[2];
-            3: Data_read[3] <= DQ[3];
-            4: Data_read[4] <= DQ[4];
-            5: Data_read[5] <= DQ[5];
-            6: Data_read[6] <= DQ[6];
-            7: Data_read[7] <= DQ[7];
-            default: ; // Handle unexpected values if necessary
-        endcase
-    end
-end
+//always @(clk_90) begin
+//    if (read_DQS_from_DRAM) begin
+//        case (DQ_read_bitline)
+//            0: Data_read[0] <= DQ[0];
+//            1: Data_read[1] <= DQ[1];
+//            2: Data_read[2] <= DQ[2];
+//            3: Data_read[3] <= DQ[3];
+//            4: Data_read[4] <= DQ[4];
+//            5: Data_read[5] <= DQ[5];
+//            6: Data_read[6] <= DQ[6];
+//            7: Data_read[7] <= DQ[7];
+//            default: ; // Handle unexpected values if necessary
+//        endcase
+//    end
+//end
 
      
     phase_shifted_clock phaseShift (

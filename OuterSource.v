@@ -139,13 +139,16 @@ module OuterSource(
         .UDM(UDM),                      // Write - Upper 8 bit data mask - Write = 0 / Ignore (mask) data = 1
 
         .state(state_out)               // Output current state, currently used during testing
+        
     );
     
     // Refresh Logic
     
-    localparam integer Refresh_Value = 32'd20645161;  // Every time Refresh_clock reaches this value - Refresh all banks (Every 64 ms based on 320MHz)
-    localparam integer Reset_Counter = 32'd20645211;  // Every time Refresh_clock reaches this value - Reset the Refresh_clock to 0
-    
+//    localparam integer Refresh_Value = 32'd20645161;  // Every time Refresh_clock reaches this value - Refresh all banks (Every 64 ms based on 320MHz)
+//    localparam integer Reset_Counter = 32'd20645211;  // Every time Refresh_clock reaches this value - Reset the Refresh_clock to 0
+    localparam integer Refresh_Value = 32'd200;  // Every time Refresh_clock reaches this value - Refresh all banks (Every 64 ms based on 320MHz)
+    localparam integer Reset_Counter = 32'd205;  // Every time Refresh_clock reaches this value - Reset the Refresh_clock to 0
+        
     reg [31:0] Refresh_clock = 0;                    // Counts between 0 and Refresh_Value to refresh DRAM every 64 ms
     
     // Counting logic for Refresh_clock, from 0 to Reset_Counter
